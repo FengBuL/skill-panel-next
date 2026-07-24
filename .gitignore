@@ -1,7 +1,11 @@
 # Dependencies
 node_modules/
+dist/
 npm-debug.log*
 yarn-error.log*
+src-tauri/target/
+src-tauri/gen/schemas/
+*.tsbuildinfo
 
 # OS / editor
 .DS_Store

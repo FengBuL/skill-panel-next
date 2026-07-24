@@ -1,0 +1,10 @@
+node_modules
+dist
+src-tauri/target
+package-lock.json
+src-tauri/Cargo.lock
+prototype
+docs/prd
+docs/baseline
+docs/refactor-plan
+.DS_Store
