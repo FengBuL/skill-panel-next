@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>变化中心 · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .main { min-width:0; min-height:0; display:grid; grid-template-rows:auto 1fr; overflow:hidden; background:var(--bg); }
+    .toolbar { padding:14px 18px; border-bottom:1px solid var(--border-soft); display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .toolbar h1 { font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:var(--tracking-display); }
+    .toolbar .summary { margin-left:auto; display:flex; gap:10px; font-size:12px; color:var(--fg-2); }
+    .toolbar .summary span { display:flex; align-items:center; gap:4px; }
+    .body { display:grid; grid-template-columns:1fr 360px; min-height:0; overflow:hidden; }
+    .list-pane { min-width:0; overflow:auto; padding:14px 18px 40px; }
+    .controls { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+    .controls input { height:32px; padding:0 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); min-width:200px; }
+    .controls select { height:32px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); }
+    .group { margin-bottom:18px; }
+    .group h3 { font-size:13px; font-weight:600; color:var(--meta); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+    .item { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--border-soft); border-radius:10px; background:var(--bg); margin-bottom:6px; cursor:pointer; }
+    .item:hover { background:var(--surface); }
+    .item.selected { border-color:var(--accent); background:color-mix(in oklab, var(--accent) 6%, var(--bg)); }
+    .item.accepted { opacity:.6; }
+    .item.ignored { opacity:.5; }
+    .item input[type="checkbox"] { width:16px; height:16px; cursor:pointer; }
+    .item .title { font-size:13px; font-weight:500; }
+    .item .path { font-family:var(--font-mono); font-size:11px; color:var(--meta); margin-top:2px; }
+    .item .pill { margin-left:auto; flex-shrink:0; }
+    .detail { border-left:1px solid var(--border); background:var(--surface-warm); overflow:auto; padding:18px 16px 24px; display:flex; flex-direction:column; gap:14px; }
+    .detail h2 { font-family:var(--font-display); font-size:18px; font-weight:600; letter-spacing:var(--tracking-display); }
+    .detail .path { font-family:var(--font-mono); font-size:11px; color:var(--meta); word-break:break-all; }
+    .props { display:grid; gap:8px; }
+    .prop { display:grid; grid-template-columns:90px 1fr; gap:8px; font-size:13px; }
+    .prop dt { color:var(--muted); font-size:12px; }
+    .prop dd { word-break:break-word; }
+    .diff { font-family:var(--font-mono); font-size:12px; line-height:1.5; background:var(--surface); border-radius:10px; padding:12px; overflow:auto; white-space:pre-wrap; max-height:240px; }
+    .batch-bar { position:sticky; bottom:0; display:flex; gap:8px; padding:12px 18px; background:var(--bg); border-top:1px solid var(--border); }
+    .confirm-bg { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50; }
+    .confirm-bg.show { display:flex; }
+    .confirm { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-lg); width:min(480px,92vw); padding:22px; box-shadow:var(--elev-raised); }
+    .confirm h3 { font-size:18px; font-weight:600; margin-bottom:8px; }
+    .confirm p { font-size:13px; color:var(--fg-2); line-height:1.5; }
+    .confirm footer { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+    @media (max-width:1100px){ .body { grid-template-columns:1fr; } .detail { display:none; } }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title" data-i18n="app.title">Skill Panel — 变化中心</div><div class="global-controls" data-global-controls></div></div>
+    <div class="main">
+      <div class="toolbar">
+        <button type="button" class="btn btn-ghost" id="btn-back">← 返回</button>
+        <h1>变化中心</h1>
+        <div class="summary" id="summary"></div>
+      </div>
+      <div class="body">
+        <div class="list-pane">
+          <div class="controls">
+            <input type="text" id="search" placeholder="搜索名称、路径或文件名…" />
+            <select id="filter-type"><option value="all">全部类型</option></select>
+            <span id="selected-count" style="font-size:12px;color:var(--muted)"></span>
+          </div>
+          <div id="list"></div>
+          <div class="batch-bar">
+            <button type="button" class="btn" id="btn-accept-selected">接受选中</button>
+            <button type="button" class="btn" id="btn-ignore-selected">忽略选中</button>
+            <button type="button" class="btn btn-primary" id="btn-accept-all">全部接受</button>
+            <button type="button" class="btn" id="btn-keep">保留未处理并退出</button>
+          </div>
+        </div>
+        <div class="detail" id="detail">
+          <div class="empty">选择左侧变化查看详情</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="confirm-bg" id="confirm-modal">
+    <div class="confirm">
+      <h3>确认应用变化</h3>
+      <p id="confirm-body"></p>
+      <footer>
+        <button type="button" class="btn" id="confirm-cancel">取消</button>
+        <button type="button" class="btn btn-primary" id="confirm-ok">确认</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="shared.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    let changeSetId = params.get('set') || SP.getState().changeSets.find(c => c.status === 'pending')?.id;
+    let selected = new Set();
+    let filterType = 'all';
+    let q = '';
+    let activeId = null;
+
+    const TYPE_LABELS = {
+      added: '新增', 'content-changed': '内容变化', 'path-changed': '路径变化', missing: 'Missing',
+      'file-deleted': '文件删除', 'health-changed': '健康变化', 'duplicate-changed': '疑似重复',
+      'instance-changed': '新增实例', 'rebind-candidate': '重新绑定', 'update-available': '来源可用更新', unchanged: '未变化'
+    };
+
+    function getItems() { return changeSetId ? SP.getChangeItems(changeSetId) : []; }
+    function getChangeSet() { return changeSetId ? SP.getState().changeSets.find(c => c.id === changeSetId) : null; }
+
+    function filteredItems() {
+      return getItems().filter(i => {
+        if (filterType !== 'all' && i.changeType !== filterType) return false;
+        if (q) {
+          const blob = [i.summary, i.path, i.changeType].join(' ').toLowerCase();
+          if (!blob.includes(q.toLowerCase())) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderSummary() {
+      const cs = getChangeSet();
+      const s = cs ? cs.summary : {};
+      document.getElementById('summary').innerHTML = `
+        <span>新增 <strong>${s.added || 0}</strong></span>
+        <span>更新 <strong>${s.changed || 0}</strong></span>
+        <span>Missing <strong>${s.missing || 0}</strong></span>
+        <span>异常 <strong>${s.failed || 0}</strong></span>
+        <span>未变化 <strong>${s.unchanged || 0}</strong></span>
+      `;
+    }
+
+    function renderFilters() {
+      const sel = document.getElementById('filter-type');
+      const types = [...new Set(getItems().map(i => i.changeType))];
+      sel.innerHTML = '<option value="all">全部类型</option>' + types.map(t => `<option value="${SP.$escape(t)}">${SP.$escape(TYPE_LABELS[t] || t)}</option>`).join('');
+      sel.value = filterType;
+    }
+
+    function renderList() {
+      const list = document.getElementById('list');
+      const items = filteredItems();
+      if (!items.length) { list.innerHTML = '<div class="empty">当前没有匹配的变化</div>'; return; }
+
+      const grouped = {};
+      items.forEach(i => { const key = i.changeType; (grouped[key] ||= []).push(i); });
+
+      list.innerHTML = Object.entries(grouped).map(([type, group]) => `
+        <div class="group">
+          <h3>${SP.$escape(TYPE_LABELS[type] || type)} (${group.length})</h3>
+          ${group.map(i => `
+            <div class="item ${i.status === 'accepted' ? 'accepted' : ''} ${i.status === 'ignored' ? 'ignored' : ''} ${activeId === i.id ? 'selected' : ''}" data-id="${SP.$escape(i.id)}">
+              <input type="checkbox" data-check="${SP.$escape(i.id)}" ${selected.has(i.id) ? 'checked' : ''}>
+              <div>
+                <div class="title">${SP.$escape(i.summary)}</div>
+                <div class="path">${SP.$escape(i.path)}</div>
+              </div>
+              <span class="pill ${i.status === 'accepted' ? 'ok' : (i.status === 'ignored' ? 'arch' : 'warn')}">${i.status === 'accepted' ? '已接受' : (i.status === 'ignored' ? '已忽略' : '待确认')}</span>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+
+      document.getElementById('selected-count').textContent = `已选 ${selected.size} 项`;
+
+      document.querySelectorAll('.item').forEach(el => {
+        el.addEventListener('click', (e) => {
+          if (e.target.matches('input[type="checkbox"]')) return;
+          activeId = el.dataset.id;
+          renderList();
+          renderDetail();
+        });
+      });
+      document.querySelectorAll('[data-check]').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const id = cb.dataset.check;
+          if (e.target.checked) selected.add(id); else selected.delete(id);
+          renderList();
+        });
+      });
+    }
+
+    function renderDetail() {
+      const detail = document.getElementById('detail');
+      if (!activeId) { detail.innerHTML = '<div class="empty">选择左侧变化查看详情</div>'; return; }
+      const item = SP.getState().changeItems.find(i => i.id === activeId);
+      if (!item) { detail.innerHTML = '<div class="empty">变化项不存在</div>'; return; }
+      const skill = item.skillId ? SP.getSkill(item.skillId) : null;
+      const ev = item.evidence || {};
+      const diffs = item.fileDiffs || [];
+      const rebindExtra = item.changeType === 'rebind-candidate' ? `
+        <div class="prop"><dt>匹配到的原 Asset</dt><dd>${SP.$escape(ev.existingSkillName || skill?.name || '—')} (${SP.$escape(ev.existingSkillId || '')})</dd></div>
+        <div class="prop"><dt>原路径</dt><dd>${SP.$escape(ev.existingPath || ev.oldPath || '—')}</dd></div>
+        <div class="prop"><dt>新路径</dt><dd>${SP.$escape(item.path)}</dd></div>
+        <div class="prop"><dt>相似度</dt><dd>${ev.similarity != null ? (ev.similarity * 100).toFixed(0) + '%' : '—'}</dd></div>
+      ` : '';
+      const updateExtra = item.changeType === 'update-available' ? `
+        <div class="prop"><dt>来源类型</dt><dd>${SP.$escape(ev.hostType || '—')}</dd></div>
+        <div class="prop"><dt>远程版本</dt><dd>${SP.$escape(ev.remoteVersion || '—')}</dd></div>
+        <div class="prop"><dt>远程 Commit</dt><dd>${SP.$escape(ev.remoteCommit || '—')}</dd></div>
+      ` : '';
+      const actionButtons = item.changeType === 'rebind-candidate' ? `
+        <button type="button" class="btn btn-primary" data-act="accept" data-id="${SP.$escape(item.id)}">重新绑定到已有 Skill</button>
+        <button type="button" class="btn" data-act="as-new" data-id="${SP.$escape(item.id)}">作为新 Skill 添加</button>
+        <button type="button" class="btn" data-act="defer" data-id="${SP.$escape(item.id)}">稍后处理</button>
+      ` : (item.changeType === 'update-available' ? `
+        <button type="button" class="btn btn-primary" data-act="accept" data-id="${SP.$escape(item.id)}">标记为可更新</button>
+        <button type="button" class="btn" data-act="ignore" data-id="${SP.$escape(item.id)}">忽略本次提示</button>
+        <button type="button" class="btn" data-act="defer" data-id="${SP.$escape(item.id)}">稍后处理</button>
+      ` : `
+        <button type="button" class="btn btn-primary" data-act="accept" data-id="${SP.$escape(item.id)}">接受</button>
+        <button type="button" class="btn" data-act="ignore" data-id="${SP.$escape(item.id)}">忽略本次变化</button>
+        <button type="button" class="btn" data-act="defer" data-id="${SP.$escape(item.id)}">稍后处理</button>
+      `);
+      detail.innerHTML = `
+        <h2>${SP.$escape(item.summary)}</h2>
+        <div class="path">${SP.$escape(item.path)}</div>
+        <div class="props">
+          <div class="prop"><dt>变化类型</dt><dd>${SP.$escape(TYPE_LABELS[item.changeType] || item.changeType)}</dd></div>
+          <div class="prop"><dt>当前 Skill</dt><dd>${skill ? SP.$escape(skill.displayName || skill.name) : '（新 Skill）'}</dd></div>
+          <div class="prop"><dt>权限状态</dt><dd>${SP.$escape(item.permissionStatus)}</dd></div>
+          <div class="prop"><dt>健康问题</dt><dd>${item.healthIssues.length ? SP.$escape(item.healthIssues.join('、')) : '无'}</dd></div>
+          <div class="prop"><dt>证据</dt><dd>${SP.$escape(ev.reason || '—')}</dd></div>
+          ${rebindExtra}
+          ${updateExtra}
+        </div>
+        ${diffs.length && item.changeType !== 'update-available' ? `<h3>文件差异</h3><div class="diff">${SP.$escape(diffText(diffs[0]))}</div>` : ''}
+        <div class="actions">
+          ${actionButtons}
+        </div>
+      `;
+      detail.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.id;
+        if (b.dataset.act === 'accept') SP.acceptChangeItem(id);
+        if (b.dataset.act === 'ignore') SP.ignoreChangeItem(id);
+        if (b.dataset.act === 'defer') SP.deferChangeItem(id);
+        if (b.dataset.act === 'as-new') SP.convertRebindToAdd(id);
+        renderList();
+        renderDetail();
+      }));
+    }
+
+    function diffText(diff) {
+      return `文件：${diff.relativePath}\n变化：${diff.changeType}\n哈希：${diff.beforeHash || '—'} → ${diff.afterHash || '—'}\n大小：${diff.beforeSize} → ${diff.afterSize}`;
+    }
+
+    function showConfirm(items, action) {
+      const modal = document.getElementById('confirm-modal');
+      const body = document.getElementById('confirm-body');
+      const added = items.filter(i => i.changeType === 'added').length;
+      const changed = items.filter(i => i.changeType !== 'added' && i.changeType !== 'missing' && i.changeType !== 'unchanged').length;
+      const missing = items.filter(i => i.changeType === 'missing').length;
+      const total = getItems().length;
+      const pending = getItems().filter(i => i.status === 'pending').length;
+      body.innerHTML = `将${action === 'accept' ? '接受' : '忽略'} <strong>${items.length}</strong> 项变化：\n<ul style="margin:8px 0;padding-left:18px;line-height:1.6"><li>新增 Asset：${added}</li><li>更新 Instance：${changed}</li><li>标记 Missing：${missing}</li></ul>\n应用后，<strong>${pending - items.length}</strong> 项仍将保留为未处理。\n用户分类、标签和收藏不会被覆盖。`;
+      modal.classList.add('show');
+      const ok = document.getElementById('confirm-ok');
+      const cancel = document.getElementById('confirm-cancel');
+      const handler = () => {
+        if (action === 'accept') {
+          items.forEach(i => SP.acceptChangeItem(i.id));
+          const res = SP.applyChangeSet(changeSetId);
+          SP.toast(res.ok ? '变化已应用' : '部分应用失败，请查看详情');
+        } else {
+          items.forEach(i => SP.ignoreChangeItem(i.id));
+          SP.toast('已忽略选中项');
+        }
+        modal.classList.remove('show');
+        ok.removeEventListener('click', handler);
+        renderAll();
+      };
+      ok.onclick = handler;
+      cancel.onclick = () => { modal.classList.remove('show'); };
+    }
+
+    function renderAll() {
+      renderSummary();
+      renderFilters();
+      renderList();
+      renderDetail();
+    }
+
+    document.getElementById('search').addEventListener('input', (e) => { q = e.target.value; renderList(); });
+    document.getElementById('filter-type').addEventListener('change', (e) => { filterType = e.target.value; renderList(); });
+    document.getElementById('btn-accept-selected').addEventListener('click', () => {
+      const items = [...selected].map(id => SP.getState().changeItems.find(i => i.id === id)).filter(Boolean);
+      if (!items.length) return SP.toast('请先选择变化项');
+      showConfirm(items, 'accept');
+    });
+    document.getElementById('btn-ignore-selected').addEventListener('click', () => {
+      const items = [...selected].map(id => SP.getState().changeItems.find(i => i.id === id)).filter(Boolean);
+      if (!items.length) return SP.toast('请先选择变化项');
+      showConfirm(items, 'ignore');
+    });
+    document.getElementById('btn-accept-all').addEventListener('click', () => {
+      const items = getItems().filter(i => i.status === 'pending');
+      if (!items.length) return SP.toast('没有待确认项');
+      showConfirm(items, 'accept');
+    });
+    document.getElementById('btn-keep').addEventListener('click', () => {
+      SP.markOnboardingComplete('pending-changes');
+      SP.returnToOrigin('index.html');
+    });
+    document.getElementById('btn-back').addEventListener('click', () => {
+      // Returning with pending items counts as retaining unprocessed changes.
+      if (SP.getPendingChangeSetCount() > 0) SP.markOnboardingComplete('pending-changes');
+      SP.returnToOrigin('index.html');
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>

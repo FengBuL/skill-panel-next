@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conflict · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* Phase E Conflict — page-local layout only */
+    .main.sp-conflict-main {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .sp-conflict-layout {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      min-height: 0;
+      overflow: hidden;
+    }
+    .sp-conflict-files {
+      border-right: 1px solid var(--border-soft);
+      background: var(--surface-warm);
+      overflow: auto;
+      min-height: 0;
+    }
+    .sp-conflict-main-pane {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      overflow: hidden;
+    }
+    .sp-conflict-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      min-height: 0;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .sp-conflict-panel {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      border-right: 1px solid var(--border-soft);
+      overflow: hidden;
+    }
+    .sp-conflict-panel:last-child { border-right: 0; }
+    .sp-conflict-panel header {
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--meta);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--surface-warm);
+    }
+    .sp-conflict-panel .body {
+      overflow: auto;
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .sp-conflict-diff-area {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 14px;
+    }
+    .sp-conflict-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border-soft);
+      background: var(--bg);
+    }
+    .sp-conflict-file-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--fg-2);
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .sp-conflict-file-item:hover { background: rgba(0,0,0,0.04); color: var(--fg); }
+    html.dark .sp-conflict-file-item:hover { background: rgba(255,255,255,0.05); }
+    .sp-conflict-file-item.active {
+      background: color-mix(in oklab, var(--accent) 10%, transparent);
+      color: var(--fg);
+      font-weight: 550;
+    }
+    .sp-conflict-file-item .path {
+      font-family: var(--font-mono);
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sp-conflict-file-item .meta {
+      font-size: 11px;
+      color: var(--meta);
+      margin-top: 2px;
+    }
+    .sp-conflict-tabs {
+      display: flex;
+      gap: 2px;
+      padding: 0 10px;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--surface-warm);
+    }
+    .sp-conflict-tabs button {
+      border: 0;
+      background: transparent;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .sp-conflict-tabs button.active {
+      color: var(--fg);
+      font-weight: 600;
+      border-bottom-color: var(--fg);
+    }
+    @media (max-width: 1100px) {
+      .sp-conflict-layout { grid-template-columns: 1fr; }
+      .sp-conflict-panels { grid-template-columns: 1fr; max-height: 40vh; }
+      .sp-conflict-files { max-height: 160px; border-right: 0; border-bottom: 1px solid var(--border-soft); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <div class="win-title" data-i18n="app.title">Skill Panel — Conflict</div>
+      <div class="global-controls" data-global-controls></div>
+    </div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">SP</div><div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div></div>
+        <nav class="nav">
+          <div class="nav-label">工作区</div>
+          <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5V6.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg><span data-i18n="nav.library">Library</span><span class="count" id="nav-lib-count">0</span></a>
+          <a href="insights.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16M8 15v4M12 10v9M16 7v12"/></svg><span data-i18n="nav.insights">Insights</span><span class="count" id="nav-ins-count">0</span></a>
+          <a href="activity.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg><span data-i18n="nav.activity">Activity</span><span class="count" id="nav-act-count">0</span></a>
+          <a href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg><span data-i18n="nav.settings">Settings</span></a>
+        </nav>
+      </aside>
+
+      <div class="main sp-conflict-main">
+        <header class="sp-editor-header" id="conflict-header">
+          <button type="button" class="btn btn-ghost" id="btn-back">← 返回编辑器</button>
+          <div class="sp-editor-title">
+            <h1 id="conflict-skill-name">外部冲突</h1>
+            <div class="path" id="conflict-instance-path">—</div>
+          </div>
+          <div class="sp-editor-status-row">
+            <span class="sd-pill danger" id="conflict-badge"><i class="sp-status-dot"></i><span>外部已修改</span></span>
+            <span class="sd-pill" id="conflict-file-count"><i class="sp-status-dot"></i><span>0 个文件</span></span>
+          </div>
+        </header>
+
+        <div class="sp-conflict-layout" id="conflict-layout">
+          <aside class="sp-conflict-files">
+            <div class="sp-editor-tree-head" style="padding:8px 12px;border-bottom:1px solid var(--border-soft);font-size:11px;font-weight:600;color:var(--meta);text-transform:uppercase;letter-spacing:.05em">冲突文件</div>
+            <div id="conflict-file-list"></div>
+          </aside>
+
+          <section class="sp-conflict-main-pane">
+            <div id="conflict-global-banner" style="display:none;padding:14px 16px;border-bottom:1px solid var(--border-soft);background:var(--surface-warm);font-size:13px;color:var(--fg-2)"></div>
+            <div class="sp-conflict-panels" id="conflict-three-panels">
+              <div class="sp-conflict-panel">
+                <header>Base（Session 打开时基线）</header>
+                <div class="body" id="panel-base">—</div>
+              </div>
+              <div class="sp-conflict-panel">
+                <header>Current（磁盘）</header>
+                <div class="body" id="panel-current">—</div>
+              </div>
+              <div class="sp-conflict-panel">
+                <header>Draft（草稿）</header>
+                <div class="body" id="panel-draft">—</div>
+              </div>
+            </div>
+
+            <div class="sp-conflict-tabs" id="diff-tabs">
+              <button type="button" class="active" data-mode="two-way">双向 Diff（磁盘 ↔ 草稿）</button>
+              <button type="button" data-mode="three-way">三方 Diff（基线 / 磁盘 / 草稿）</button>
+            </div>
+
+            <div class="sp-conflict-diff-area">
+              <div class="sp-diff" id="conflict-diff"></div>
+            </div>
+
+            <div class="sp-conflict-actions">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-right:auto">
+                <input type="checkbox" id="diff-viewed-ack" />
+                我已查看所有将被覆盖文件的差异
+              </label>
+              <button type="button" class="btn" id="btn-reload">重新加载磁盘</button>
+              <button type="button" class="btn" id="btn-keep">保留草稿</button>
+              <button type="button" class="btn" id="btn-merge">比较并合并</button>
+              <button type="button" class="btn" id="btn-save-copy">另存为副本</button>
+              <button type="button" class="btn" id="btn-discard">放弃草稿</button>
+              <button type="button" class="btn btn-danger" id="btn-force" disabled>准备强制覆盖…</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="force-modal">
+    <div class="modal wide">
+      <header>
+        <h3>强制覆盖确认</h3>
+        <p>强制覆盖会用草稿替换磁盘版本前先创建包快照。此原型不会真实写入宿主文件系统。</p>
+      </header>
+      <div class="body">
+        <div id="force-summary" style="font-size:13px;margin-bottom:10px;color:var(--fg-2)"></div>
+        <div class="sp-diff" id="force-diff"></div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px">
+          <input type="checkbox" id="force-ack" />
+          我理解这会覆盖磁盘侧内容（原型模拟），且操作不可自动撤销。
+        </label>
+      </div>
+      <footer>
+        <button type="button" class="btn" id="force-cancel">取消</button>
+        <button type="button" class="btn btn-danger" id="force-confirm" disabled>确认强制覆盖</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="shared.js"></script>
+  <script src="conflict-app.js"></script>
+</body>
+</html>

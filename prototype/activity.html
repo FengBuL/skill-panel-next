@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Activity · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .main { min-width:0; min-height:0; display:grid; grid-template-rows:auto 1fr; overflow:hidden; background:var(--bg); }
+    .toolbar { padding:14px 18px 12px; border-bottom:1px solid var(--border-soft); }
+    .toolbar h1 { font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:var(--tracking-display); }
+    .toolbar p { font-size:12px; color:var(--muted); margin-top:4px; }
+    .tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+    .tab { border:0; background:transparent; padding:8px 14px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+    .tab:hover { color:var(--fg); } .tab.active { color:var(--fg); font-weight:600; border-bottom-color:var(--fg); }
+    .filters { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center; }
+    .chip { height:30px; padding:0 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); font-size:12px; font-weight:500; cursor:pointer; color:var(--fg-2); }
+    .chip.active { background:var(--surface); border-color:var(--fg); color:var(--fg); font-weight:600; }
+    .search { margin-left:auto; height:32px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:10px; background:var(--surface); min-width:200px; }
+    .search input { border:0; outline:0; background:transparent; font-size:13px; width:100%; color:var(--fg); }
+    .body { display:grid; grid-template-columns:1fr var(--detail); min-height:0; overflow:hidden; }
+    .list { overflow:auto; min-width:0; position:relative; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { position:sticky; top:0; background:var(--surface-warm); text-align:left; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--meta); padding:10px 14px; border-bottom:1px solid var(--border); z-index:2; }
+    td { padding:11px 14px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
+    tbody tr { cursor:pointer; transition:background .15s; }
+    tbody tr:hover td { background:var(--surface); }
+    tbody tr.selected td { background: color-mix(in oklab, var(--accent) 8%, transparent); }
+    .type { display:inline-flex; height:22px; align-items:center; padding:0 8px; border-radius:6px; font-size:11px; font-weight:600; background:var(--surface); border:1px solid var(--border-soft); color:var(--fg-2); }
+    .type.pending { background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn-text); }
+    .type.usage { background:color-mix(in oklab, var(--accent) 10%, transparent); border-color:color-mix(in oklab, var(--accent) 25%, var(--border)); color:var(--accent-active); }
+    .type.edit { background: var(--surface); border-color: var(--border-soft); color: var(--fg-2); }
+    .type.archive { background:var(--surface); border-color:var(--border-soft); color: var(--muted); }
+    .type.system { background:var(--surface); border-color:var(--border-soft); color: var(--muted); }
+    .result { font-size:12px; font-weight:500; color:var(--fg-2); }
+    .sp-result { font-size:12px; font-weight:600; }
+    .sp-result.completed { color: var(--fg-2); }
+    .sp-result.partial, .sp-result.pending { color: var(--warn-text); }
+    .sp-result.failed, .sp-result.rolled-back, .sp-result.rollback-failed { color: var(--danger, #b42318); }
+    .chip { height:28px; padding:0 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); font-size:12px; font-weight:500; cursor:pointer; color:var(--fg-2); }
+    .chip.active { background:var(--surface); border-color:var(--fg); color:var(--fg); font-weight:600; box-shadow: inset 0 -2px 0 var(--fg); }
+    .drawer { border-left:1px solid var(--border); background:var(--surface-warm); overflow:auto; padding:18px 16px 24px; display:flex; flex-direction:column; gap:14px; }
+    .drawer h2 { font-family:var(--font-display); font-size:18px; font-weight:600; letter-spacing:var(--tracking-display); margin-bottom:4px; }
+    .drawer .sub { font-size:12px; color:var(--muted); margin-bottom:10px; }
+    .props { display:grid; gap:8px; }
+    .prop { display:grid; grid-template-columns:100px 1fr; gap:8px; font-size:13px; }
+    .prop dt { color:var(--muted); font-size:12px; }
+    .prop dd { font-weight:500; word-break:break-word; }
+    .prop dd.mono { font-family:var(--font-mono); font-size:12px; font-weight:400; }
+    .note { font-size:12px; color:var(--muted); line-height:1.45; padding:10px 12px; background:var(--bg); border-radius:10px; border:1px solid var(--border-soft); }
+    .modal-bg.show { display:flex; }
+    @media (max-width:1100px){ .body { grid-template-columns:1fr; } .drawer { display:none; } }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title" data-i18n="app.title">Skill Panel — Activity</div><div class="global-controls" data-global-controls></div></div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">SP</div><div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div></div>
+        <nav class="nav">
+          <div class="nav-label" data-i18n="nav.workspace">工作区</div>
+          <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5V6.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg><span data-i18n="nav.library">Library</span><span class="count" id="nav-lib-count">0</span></a>
+          <a href="insights.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16M8 15v4M12 10v9M16 7v12"/></svg><span data-i18n="nav.insights">Insights</span><span class="count" id="nav-ins-count">0</span></a>
+          <a class="active" href="activity.html" data-od-id="nav-activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg><span data-i18n="nav.activity">Activity</span><span class="count" id="nav-act-count">0</span></a>
+          <a href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg><span data-i18n="nav.settings">Settings</span></a>
+        </nav>
+      </aside>
+      <div class="main" data-od-id="activity-main">
+        <div class="toolbar">
+          <h1 data-od-id="activity-title" data-i18n="activity.title">Activity</h1>
+          <p data-i18n="activity.lead">待处理异常与可追溯历史记录。普通“打开 Skill”默认不展示。</p>
+          <div class="tabs">
+            <button type="button" class="tab active" data-subview="pending" data-i18n="activity.tab.pending">待处理</button>
+            <button type="button" class="tab" data-subview="history" data-i18n="activity.tab.history">历史记录</button>
+          </div>
+          <div class="filters" data-od-id="activity-filters">
+            <button type="button" class="chip" data-range="1" data-i18n="activity.filter.today">今天</button>
+            <button type="button" class="chip active" data-range="7" data-i18n="activity.filter.7d">最近 7 天</button>
+            <button type="button" class="chip" data-range="30" data-i18n="activity.filter.30d">最近 30 天</button>
+            <button type="button" class="chip active" data-kind="all" data-i18n="activity.filter.all">全部</button>
+            <button type="button" class="chip" data-kind="usage" data-i18n="activity.filter.usage">使用记录</button>
+            <button type="button" class="chip" data-kind="edit" data-i18n="activity.filter.edit">编辑应用</button>
+            <button type="button" class="chip" data-kind="snap" data-i18n="activity.filter.snap">快照恢复</button>
+            <button type="button" class="chip" data-kind="archive" data-i18n="activity.filter.archive">归档管理</button>
+            <button type="button" class="chip" data-kind="system" data-i18n="activity.filter.system">系统维护</button>
+            <button type="button" class="chip active" data-sort="latest" data-i18n="activity.sort.latest">最新时间</button>
+            <button type="button" class="chip" data-sort="earliest" data-i18n="activity.sort.earliest">最早时间</button>
+            <button type="button" class="chip" data-sort="token" data-i18n="activity.sort.token">Token Top</button>
+            <button type="button" class="chip" data-sort="priority" data-i18n="activity.sort.priority">待处理优先级</button>
+            <div class="search"><input id="q" type="search" data-i18n="search.placeholder" placeholder="搜索名称、路径、标签或描述…" aria-label="搜索" /></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="list" data-od-id="activity-table">
+            <table>
+              <thead><tr>
+                <th data-i18n="activity.col.time">时间</th>
+                <th data-i18n="activity.col.skill">Skill</th>
+                <th data-i18n="activity.col.event">事件</th>
+                <th data-i18n="activity.col.category">类别</th>
+                <th data-i18n="activity.col.source">来源</th>
+                <th data-i18n="activity.col.token">关联 Token</th>
+                <th data-i18n="activity.col.result">结果</th>
+                <th data-i18n="activity.col.actions">操作</th>
+              </tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+          <aside class="drawer" id="drawer" data-od-id="event-drawer">
+            <div class="empty" id="drawer-empty">选择事件查看详情</div>
+            <div id="drawer-body" hidden>
+              <h2 id="e-title">—</h2>
+              <div class="sub" id="e-time">—</div>
+              <dl class="props" id="e-props"></dl>
+              <div class="note" id="e-note" style="margin-bottom:14px"></div>
+              <div id="e-actions"></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="resolve-modal" role="dialog" aria-modal="true" aria-labelledby="resolve-title">
+    <div class="modal">
+      <header><h3 id="resolve-title">处理事件</h3><p>完成处理后，事件状态将同步更新。</p></header>
+      <div class="body" id="resolve-body"></div>
+      <footer><button type="button" class="btn" id="resolve-cancel" data-i18n="btn.cancel">取消</button><button type="button" class="btn btn-primary" id="resolve-ok" data-i18n="activity.btn.resolve">标记为已处理</button></footer>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="shared.js"></script>
+  <script>
+    const view = SP.getViewState('activity');
+    let subview = view.subview || 'pending';
+    let range = view.range || '7';
+    let kind = view.kind || 'all';
+    let sortMode = view.sort || 'latest';
+    let q = view.search || '';
+    let selectedId = view.selectedId || null;
+    let resolveTarget = null;
+    let resolveReturnFocus = null;
+
+    const tbody = document.getElementById('tbody');
+    const allEvents = () => SP.getActivityEvents();
+    const openPendingIds = () => new Set(SP.getOpenPendingActivityEvents().map(e => e.id));
+
+    function categoryClass(c) {
+      return { pending: 'pending', usage: 'usage', edit: 'edit', snap: 'edit', archive: 'archive', system: 'system' }[c] || 'system';
+    }
+    function categoryLabel(c) {
+      const zh = { pending: '待处理', usage: '使用记录', edit: '编辑应用', snap: '快照恢复', archive: '归档管理', system: '系统维护' };
+      const en = { pending: 'Pending', usage: 'Usage', edit: 'Edit', snap: 'Snapshot', archive: 'Archive', system: 'System' };
+      return (SP.lang === 'en' ? en : zh)[c] || c;
+    }
+    function eventLabel(e) {
+      const mapZh = {
+        call: '调用记录', apply_change: '应用更改', create_snapshot: '创建快照', restore_version: '恢复版本',
+        archive: '归档', restore_archive: '恢复归档', ignore: '忽略 Skill', unignore: '恢复管理', delete: '永久删除',
+        external_file_conflict: '外部文件冲突', save_failed: '保存失败', path_missing: '路径失效',
+        permission_denied: '无权限', yaml_error: 'YAML 错误', draft_saved: '草稿已保存', scan: '重新扫描',
+        adapter_sync: '适配器同步', create: '创建 Skill', add_existing: '添加已有 Skill',
+        update_completed: '更新完成', update_completed_with_local_modifications: '更新完成（保留本地）',
+        update_awaiting_merge: '更新待合并', update_partially_completed: '更新部分完成',
+        update_failed: '更新失败', update_rollback_completed: '更新已回滚', update_rollback_failed: '更新回滚失败',
+        resolve: '标记已处理', suggestion_ignored: '忽略建议'
+      };
+      const mapEn = {
+        call: 'Call', apply_change: 'Apply changes', create_snapshot: 'Create snapshot', restore_version: 'Restore version',
+        archive: 'Archive', restore_archive: 'Restore archive', ignore: 'Ignore skill', unignore: 'Resume management', delete: 'Delete permanently',
+        external_file_conflict: 'External file conflict', save_failed: 'Save failed', path_missing: 'Path missing',
+        permission_denied: 'Permission denied', yaml_error: 'YAML error', draft_saved: 'Draft saved', scan: 'Rescan',
+        adapter_sync: 'Adapter sync', create: 'Create skill', add_existing: 'Add existing skill',
+        update_completed: 'Update completed', update_completed_with_local_modifications: 'Update completed (kept local)',
+        update_awaiting_merge: 'Update awaiting merge', update_partially_completed: 'Update partially completed',
+        update_failed: 'Update failed', update_rollback_completed: 'Update rolled back', update_rollback_failed: 'Update rollback failed',
+        resolve: 'Marked resolved', suggestion_ignored: 'Suggestion ignored'
+      };
+      return (SP.lang === 'en' ? mapEn : mapZh)[e.eventType] || e.eventType;
+    }
+    function resultLabel(result, eventType) {
+      if (eventType === 'update_awaiting_merge') return SP.lang === 'en' ? 'Awaiting merge' : '待合并';
+      if (eventType === 'update_partially_completed') return SP.lang === 'en' ? 'Partial' : '部分完成';
+      const zh = {
+        completed: '已完成', partial: '部分完成', pending: '等待处理',
+        failed: '失败', 'rolled-back': '已回滚', 'rollback-failed': '回滚失败'
+      };
+      const en = {
+        completed: 'Completed', partial: 'Partial', pending: 'Pending',
+        failed: 'Failed', 'rolled-back': 'Rolled back', 'rollback-failed': 'Rollback failed'
+      };
+      return (SP.lang === 'en' ? en : zh)[result] || result || '—';
+    }
+    function resultClass(result, eventType) {
+      if (eventType === 'update_awaiting_merge' || result === 'pending') return 'pending';
+      if (eventType === 'update_partially_completed' || result === 'partial') return 'partial';
+      if (result === 'failed' || result === 'rollback-failed') return 'failed';
+      if (result === 'rolled-back') return 'rolled-back';
+      return 'completed';
+    }
+
+    function inRange(time, range) {
+      const t = new Date(time).getTime();
+      const now = Date.now();
+      if (range === '1') return now - t < 86400000;
+      if (range === '7') return now - t < 7 * 86400000;
+      if (range === '30') return now - t < 30 * 86400000;
+      return true;
+    }
+
+    function filteredEvents() {
+      const openIds = openPendingIds();
+      let list = allEvents().filter(e => {
+        if (subview === 'pending') {
+          if (!openIds.has(e.id)) return false;
+        } else {
+          if (openIds.has(e.id)) return false;
+        }
+        if (!inRange(e.time, range)) return false;
+        if (kind !== 'all' && e.category !== kind) return false;
+        if (q) {
+          const skill = e.skillId ? (SP.getSkill(e.skillId)?.displayName || SP.getSkill(e.skillId)?.name || '') : '';
+          const blob = [skill, eventLabel(e), e.source, e.note, e.eventType].join(' ').toLowerCase();
+          if (!blob.includes(q.toLowerCase())) return false;
+        }
+        return true;
+      });
+      if (sortMode === 'latest') list.sort((a, b) => b.time.localeCompare(a.time));
+      else if (sortMode === 'earliest') list.sort((a, b) => a.time.localeCompare(b.time));
+      else if (sortMode === 'token') list.sort((a, b) => (b.tokenCount || 0) - (a.tokenCount || 0));
+      else if (sortMode === 'priority') {
+        const priority = e => e.category === 'pending' ? 0 : (e.result === 'failed' ? 1 : 2);
+        list.sort((a, b) => priority(a) - priority(b) || b.time.localeCompare(a.time));
+      }
+      return list;
+    }
+
+    function render() {
+      const list = filteredEvents();
+      updateSidebar();
+      saveView();
+      if (!list.length) {
+        tbody.innerHTML = emptyStateRow();
+        showDrawer(null);
+        return;
+      }
+      tbody.innerHTML = list.map(e => {
+        const skill = e.skillId ? SP.getSkill(e.skillId) : null;
+        const skillName = skill ? (skill.displayName || skill.name) : (e.skillId ? '—' : '—');
+        const tokenCell = e.tokenCount ? `<span class="num">${e.tokenCount.toLocaleString()}</span>` : `<span class="na">—</span>`;
+        return `<tr data-id="${SP.$escape(e.id)}" class="${selectedId === e.id ? 'selected' : ''}">
+          <td class="num">${SP.$escape(SP.$formatTime(e.time))}</td>
+          <td>${SP.$escape(skillName)}</td>
+          <td><span class="type ${categoryClass(e.category)}">${SP.$escape(eventLabel(e))}</span></td>
+          <td>${SP.$escape(categoryLabel(e.category))}</td>
+          <td>${SP.$escape(e.source)}</td>
+          <td>${tokenCell}</td>
+          <td class="result"><span class="sp-result ${resultClass(e.result, e.eventType)}" data-result="${SP.$escape(e.result || '')}" data-event-type="${SP.$escape(e.eventType || '')}">${SP.$escape(resultLabel(e.result, e.eventType))}</span></td>
+          <td><button type="button" class="btn" data-open="${SP.$escape(e.id)}">${SP.lang === 'en' ? 'Detail' : '详情'}</button></td>
+        </tr>`;
+      }).join('');
+      tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+        tr.addEventListener('click', ev => { if (ev.target.closest('button')) return; selectedId = tr.dataset.id; render(); });
+      });
+      tbody.querySelectorAll('[data-open]').forEach(b => {
+        b.addEventListener('click', ev => { ev.stopPropagation(); selectedId = b.dataset.open; render(); });
+      });
+      const selected = list.find(e => e.id === selectedId) || null;
+      showDrawer(selected);
+    }
+
+    function emptyStateRow() {
+      let title, body, action = '';
+      const hasAny = allEvents().length > 0;
+      const hasPending = SP.getOpenPendingTaskCount() > 0;
+      const hasHistory = allEvents().some(e => !openPendingIds().has(e.id));
+      const hasUsage = allEvents().some(e => e.category === 'usage');
+      const hasConfiguredAdapter = SP.getAdapters().some(a => a.status === 'connected' || a.status === 'limited');
+      const isFiltered = kind !== 'all' || q || range !== '7' || sortMode !== 'latest';
+
+      if (!hasAny) {
+        title = SP.lang === 'en' ? 'No activity yet' : '暂无活动记录';
+        body = SP.lang === 'en' ? 'Usage, edit, and archive events will appear here.' : '开始管理 Skill 后，使用、编辑、归档等事件会出现在这里。';
+      } else if (subview === 'pending' && !hasPending) {
+        title = SP.t('activity.empty.pending');
+        body = SP.lang === 'en' ? 'All exceptions and failed operations are resolved.' : '所有异常与失败操作均已处理。';
+      } else if (subview === 'history' && !hasHistory) {
+        title = SP.t('activity.empty.history');
+        body = SP.lang === 'en' ? 'Apply, archive, and restore actions will appear here.' : '开始管理 Skill 后，应用更改、归档、恢复等操作会出现在这里。';
+      } else if (!hasConfiguredAdapter) {
+        title = SP.lang === 'en' ? 'Data source not configured' : '数据来源未配置';
+        body = SP.lang === 'en' ? 'Connect a usage adapter in Settings → Data sources.' : '请先在 Settings → 数据来源中连接使用数据适配器。';
+      } else if (!hasUsage && kind === 'usage') {
+        title = SP.lang === 'en' ? 'Configured but no usage yet' : '已配置但尚无使用记录';
+        body = SP.lang === 'en' ? 'Adapters are connected, but no usage events in this range.' : '数据来源已连接，但所选时间范围内没有 Skill 使用记录。';
+      } else if (isFiltered) {
+        title = SP.t('empty.filter');
+        body = SP.lang === 'en' ? 'No events match the current filters.' : '没有事件匹配当前的时间范围、事件类型或搜索词。';
+        action = `<button type="button" class="btn" id="reset-filter">${SP.lang === 'en' ? 'Reset filters' : '重置筛选'}</button>`;
+      } else {
+        title = SP.t('empty.filter');
+        body = SP.lang === 'en' ? 'No events match the current conditions.' : '没有事件匹配当前条件。';
+      }
+      return `<tr><td colspan="8" class="empty"><h3>${SP.$escape(title)}</h3><p>${SP.$escape(body)}</p><div style="margin-top:12px">${action}</div></td></tr>`;
+    }
+
+    function showDrawer(e) {
+      const empty = document.getElementById('drawer-empty');
+      const body = document.getElementById('drawer-body');
+      if (!e) {
+        empty.hidden = false; body.hidden = true;
+        empty.textContent = selectedId
+          ? (SP.lang === 'en' ? 'Selected event is outside the current filters' : '当前选中事件不在筛选结果中')
+          : (SP.lang === 'en' ? 'Select an event to view details' : '选择事件查看详情');
+        return;
+      }
+      empty.hidden = true; body.hidden = false;
+      const skill = e.skillId ? SP.getSkill(e.skillId) : null;
+      document.getElementById('e-title').textContent = eventLabel(e);
+      document.getElementById('e-time').textContent = `${SP.$formatTime(e.time)} · ${categoryLabel(e.category)}`;
+      const attr = e.attribution && e.attribution !== '—' ? ` · ${e.attribution}` : '';
+      const tokenStr = e.tokenCount ? e.tokenCount.toLocaleString() + attr : '—';
+      document.getElementById('e-props').innerHTML = `
+        <div class="prop"><dt>事件 ID</dt><dd class="mono">${SP.$escape(e.id)}</dd></div>
+        <div class="prop"><dt>Skill</dt><dd>${skill ? SP.$escape(skill.displayName || skill.name) : (e.skillId ? SP.$escape(e.skillId) : '—')}</dd></div>
+        <div class="prop"><dt>路径</dt><dd class="mono">${skill ? SP.$escape(skill.absolutePath) : '—'}</dd></div>
+        <div class="prop"><dt>事件类型</dt><dd class="mono">${SP.$escape(e.eventType || '—')}</dd></div>
+        <div class="prop"><dt>类别</dt><dd>${SP.$escape(categoryLabel(e.category))}</dd></div>
+        <div class="prop"><dt>结果</dt><dd><span class="sp-result ${resultClass(e.result, e.eventType)}" data-result="${SP.$escape(e.result || '')}">${SP.$escape(resultLabel(e.result, e.eventType))}</span></dd></div>
+        <div class="prop"><dt>来源</dt><dd>${SP.$escape(e.source)}</dd></div>
+        <div class="prop"><dt>关联 Token</dt><dd class="mono">${SP.$escape(tokenStr)}</dd></div>
+        <div class="prop"><dt>目标路径</dt><dd class="mono">${SP.$escape(e.targetPath || '—')}</dd></div>
+        <div class="prop"><dt>快照</dt><dd class="mono">${SP.$escape(e.snapshotId || '—')}</dd></div>
+        <div class="prop"><dt>草稿</dt><dd class="mono">${SP.$escape(e.draftId || '—')}</dd></div>
+        <div class="prop"><dt>任务</dt><dd class="mono">${SP.$escape(e.taskId || '—')}</dd></div>`;
+      document.getElementById('e-note').textContent = e.note || '';
+      let acts = '';
+      if (e.skillId && skill) acts += `<button type="button" class="btn btn-primary" data-act="detail" data-skill-id="${SP.$escape(e.skillId)}">${SP.lang === 'en' ? 'View detail' : '查看详情'}</button>`;
+      if (e.skillId && skill && (e.category === 'pending' || e.eventType === 'external_file_conflict' || e.eventType === 'save_failed')) {
+        acts += `<button type="button" class="btn" data-act="editor" data-skill-id="${SP.$escape(e.skillId)}">${SP.lang === 'en' ? 'Open Editor' : '打开 Editor'}</button>`;
+      }
+      if (openPendingIds().has(e.id) && e.taskId) {
+        acts += `<button type="button" class="btn" data-resolve="${SP.$escape(e.id)}" data-i18n="activity.btn.resolve">${SP.t('activity.btn.resolve')}</button>`;
+      }
+      acts += `<button type="button" class="btn" id="open-dir">${SP.lang === 'en' ? 'Open folder' : '打开目录'}</button>`;
+      document.getElementById('e-actions').innerHTML = acts;
+      const od = document.getElementById('open-dir');
+      if (od) od.onclick = () => SP.toast(SP.lang === 'en' ? 'Open folder requested (prototype)' : '已请求打开目录（原型）');
+      document.querySelectorAll('[data-act="detail"]').forEach(b => b.addEventListener('click', () => SP.openSkillDetail(b.dataset.skillId)));
+      document.querySelectorAll('[data-act="editor"]').forEach(b => b.addEventListener('click', () => SP.openSkillEditor(b.dataset.skillId)));
+      document.querySelectorAll('[data-resolve]').forEach(b => b.addEventListener('click', () => openResolve(e, b)));
+    }
+
+    function closeResolveModal() {
+      document.getElementById('resolve-modal').classList.remove('show');
+      if (resolveReturnFocus && typeof resolveReturnFocus.focus === 'function') {
+        resolveReturnFocus.focus();
+      }
+      resolveReturnFocus = null;
+    }
+
+    function openResolve(e, trigger) {
+      resolveTarget = e;
+      resolveReturnFocus = trigger || document.activeElement;
+      document.getElementById('resolve-body').innerHTML = `<p>${SP.lang === 'en' ? 'Event' : '事件'}：<strong>${SP.$escape(eventLabel(e))}</strong></p><p></p>`;
+      document.getElementById('resolve-body').querySelector('p:last-child').textContent = e.note || '';
+      document.getElementById('resolve-modal').classList.add('show');
+      const ok = document.getElementById('resolve-ok');
+      if (ok) ok.focus();
+    }
+
+    function updateSidebar() {
+      const skills = SP.getSkills();
+      document.getElementById('nav-lib-count').textContent = skills.filter(s => s.lifecycleStatus === 'active' && !s.isIgnored).length;
+      const ins = SP.getArchiveCandidates().length + SP.getDuplicateGroups().length + SP.getFileIssues().length +
+        SP.getUnfinishedDrafts().length + SP.getTokenAttentions().length;
+      document.getElementById('nav-ins-count').textContent = ins;
+      document.getElementById('nav-act-count').textContent = SP.getOpenPendingTaskCount();
+    }
+    function saveView() { SP.setViewState('activity', { subview, range, kind, sort: sortMode, search: q, selectedId }); }
+    function showToast(t) { SP.toast(t); }
+
+    document.querySelectorAll('.tab[data-subview]').forEach(c => c.addEventListener('click', () => {
+      document.querySelectorAll('.tab[data-subview]').forEach(x => x.classList.remove('active'));
+      c.classList.add('active'); subview = c.dataset.subview; selectedId = null; render();
+    }));
+    document.querySelectorAll('.chip[data-range]').forEach(c => c.addEventListener('click', () => {
+      document.querySelectorAll('.chip[data-range]').forEach(x => x.classList.remove('active'));
+      c.classList.add('active'); range = c.dataset.range; render();
+    }));
+    document.querySelectorAll('.chip[data-kind]').forEach(c => c.addEventListener('click', () => {
+      document.querySelectorAll('.chip[data-kind]').forEach(x => x.classList.remove('active'));
+      c.classList.add('active'); kind = c.dataset.kind; render();
+    }));
+    document.querySelectorAll('.chip[data-sort]').forEach(c => c.addEventListener('click', () => {
+      document.querySelectorAll('.chip[data-sort]').forEach(x => x.classList.remove('active'));
+      c.classList.add('active'); sortMode = c.dataset.sort; render();
+    }));
+    document.getElementById('q').addEventListener('input', e => { q = e.target.value.trim(); render(); });
+    document.getElementById('tbody').addEventListener('click', e => {
+      if (e.target.id === 'reset-filter') { kind = 'all'; q = ''; sortMode = 'latest'; range = '7'; subview = 'pending'; document.querySelectorAll('.chip[data-kind]').forEach(x => x.classList.toggle('active', x.dataset.kind === 'all')); document.querySelectorAll('.chip[data-sort]').forEach(x => x.classList.toggle('active', x.dataset.sort === 'latest')); document.querySelectorAll('.chip[data-range]').forEach(x => x.classList.toggle('active', x.dataset.range === '7')); document.querySelectorAll('.tab[data-subview]').forEach(x => x.classList.toggle('active', x.dataset.subview === 'pending')); document.getElementById('q').value = ''; render(); }
+    });
+    document.getElementById('resolve-cancel').addEventListener('click', () => closeResolveModal());
+    document.getElementById('resolve-ok').addEventListener('click', () => {
+      if (resolveTarget && resolveTarget.taskId) {
+        SP.resolveTask(resolveTarget.taskId);
+        if (SP.addAuditEvent) SP.addAuditEvent({ skillId: resolveTarget.skillId, eventType: 'resolve', category: 'system', source: 'Skill Panel', result: 'completed', taskId: resolveTarget.taskId, note: SP.lang === 'en' ? 'Manually marked as resolved' : '用户手动标记事件为已处理' });
+        showToast(SP.lang === 'en' ? 'Marked as resolved' : '已标记为已处理');
+      }
+      closeResolveModal();
+      render();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.getElementById('resolve-modal').classList.contains('show')) {
+        e.preventDefault();
+        closeResolveModal();
+      }
+    });
+
+    document.getElementById('q').value = q;
+    document.querySelectorAll('.tab[data-subview]').forEach(x => x.classList.toggle('active', x.dataset.subview === subview));
+    document.querySelectorAll('.chip[data-range]').forEach(x => x.classList.toggle('active', x.dataset.range === range));
+    document.querySelectorAll('.chip[data-kind]').forEach(x => x.classList.toggle('active', x.dataset.kind === kind));
+    document.querySelectorAll('.chip[data-sort]').forEach(x => x.classList.toggle('active', x.dataset.sort === sortMode));
+    if (SP.applyLanguage) SP.applyLanguage(SP.lang || 'zh');
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>首次启动 · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .main { min-width:0; min-height:0; display:grid; place-items:center; overflow:auto; padding:28px; }
+    .onboarding-card { width:min(640px,100%); background:var(--bg); border:1px solid var(--border-soft); border-radius:var(--radius-lg); padding:32px; box-shadow:var(--elev-raised); }
+    .steps { display:flex; gap:8px; margin-bottom:24px; }
+    .step-dot { width:28px; height:28px; border-radius:50%; background:var(--surface); color:var(--muted); display:grid; place-items:center; font-size:12px; font-weight:600; }
+    .step-dot.active { background:var(--accent); color:var(--accent-on); }
+    .step-dot.done { background:var(--success); color:#fff; }
+    h1 { font-family:var(--font-display); font-size:24px; font-weight:600; letter-spacing:var(--tracking-display); margin-bottom:10px; }
+    .lead { font-size:14px; color:var(--fg-2); line-height:1.6; margin-bottom:22px; }
+    .feature { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--border-soft); }
+    .feature:last-child { border-bottom:0; }
+    .feature svg { width:22px; height:22px; color:var(--accent); flex-shrink:0; margin-top:2px; }
+    .feature strong { font-size:14px; display:block; margin-bottom:2px; }
+    .feature span { font-size:13px; color:var(--fg-2); line-height:1.5; }
+    .list { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+    .list-item { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:1px solid var(--border-soft); border-radius:10px; background:var(--surface-warm); }
+    .list-item .meta { font-size:12px; color:var(--meta); }
+    .exclusions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .exclusions span { height:24px; padding:0 10px; border-radius:980px; background:var(--surface); border:1px solid var(--border-soft); font-size:12px; color:var(--fg-2); }
+    .actions { display:flex; justify-content:space-between; gap:12px; margin-top:28px; }
+    .actions-right { display:flex; gap:10px; }
+    .summary { background:var(--surface-warm); border-radius:10px; padding:14px 16px; font-size:13px; line-height:1.6; color:var(--fg-2); }
+    .summary strong { color:var(--fg); }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title" data-i18n="app.title">Skill Panel — 首次启动</div><div class="global-controls" data-global-controls></div></div>
+    <div class="main">
+      <div class="onboarding-card">
+        <div class="steps">
+          <div class="step-dot active" id="dot-1">1</div>
+          <div class="step-dot" id="dot-2">2</div>
+          <div class="step-dot" id="dot-3">3</div>
+        </div>
+
+        <div id="step-1">
+          <h1>发现和管理本机 Skill</h1>
+          <p class="lead">Skill Panel 会扫描你已授权的本地目录，识别包含 SKILL.md 的 Skill 包，并在你确认前不会修改 Library。</p>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <div><strong>只读扫描</strong><span>扫描过程只读取文件，不会执行任何脚本或调用模型。</span></div>
+          </div>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 17v.01"/><path d="M12 13.5a1.5 1.5 0 0 1 1-1.5 2.5 2.5 0 1 0-3-4"/></svg>
+            <div><strong>确认前不生效</strong><span>扫描结果会先进入“变化中心”，只有被你接受的项才会加入正式 Library。</span></div>
+          </div>
+          <div class="feature">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div><strong>写入需单独授权</strong><span>编辑、应用更改或归档等写入操作需要你在对应页面再次确认。</span></div>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" id="btn-skip">暂不扫描</button>
+            <button type="button" class="btn btn-primary" id="btn-next-1">开始设置</button>
+          </div>
+        </div>
+
+        <div id="step-2" class="hidden">
+          <h1>扫描范围与隐私</h1>
+          <p class="lead">默认扫描以下已授权目录。你可以停止管理某个目录，或在本页添加排除路径。</p>
+          <div class="list" id="host-list"></div>
+          <p class="lead">排除项：</p>
+          <div class="exclusions">
+            <span>系统目录</span>
+            <span>隐藏目录</span>
+            <span>node_modules</span>
+            <span>.git</span>
+          </div>
+          <p class="lead" style="margin-top:14px">不扫描系统敏感目录（如 /System、/private、Windows 系统目录）。读取权限状态可在 Settings 中查看。</p>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" id="btn-back-2">返回</button>
+            <div class="actions-right">
+              <button type="button" class="btn" id="btn-add-exclude">添加排除目录</button>
+              <button type="button" class="btn btn-primary" id="btn-next-2">下一步</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="step-3" class="hidden">
+          <h1>确认并开始扫描</h1>
+          <p class="lead">请确认扫描范围，然后开始首次全盘扫描。</p>
+          <div class="summary" id="summary"></div>
+          <p class="lead">点击“开始首次扫描”后，Skill Panel 将创建一次 Scan Session，你可以在扫描过程中暂停、继续或取消。</p>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" id="btn-back-3">返回</button>
+            <button type="button" class="btn btn-primary" id="btn-start">开始首次扫描</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="shared.js"></script>
+  <script>
+    let step = 1;
+    const hosts = SP.getHosts().filter(h => h.id !== 'archive');
+    const settings = SP.getSettings();
+
+    function showStep(n) {
+      step = n;
+      [1,2,3].forEach(i => {
+        document.getElementById('step-' + i).classList.toggle('hidden', i !== n);
+        const dot = document.getElementById('dot-' + i);
+        dot.classList.toggle('active', i === n);
+        dot.classList.toggle('done', i < n);
+      });
+      if (n === 2) renderHosts();
+      if (n === 3) renderSummary();
+    }
+
+    function renderHosts() {
+      document.getElementById('host-list').innerHTML = hosts.map(h => `
+        <div class="list-item">
+          <div>
+            <strong>${SP.$escape(h.name)}</strong>
+            <div class="meta">${SP.$escape(h.path)} · ${h.enabled ? '已授权' : '已停止'} · ${h.permissionStatus === 'granted' ? '可读取' : '权限受限'}</div>
+          </div>
+          <span class="pill ${h.enabled ? 'ok' : 'warn'}">${h.enabled ? '扫描' : '跳过'}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderSummary() {
+      const enabled = hosts.filter(h => h.enabled);
+      document.getElementById('summary').innerHTML = `
+        <div>扫描目录：<strong>${enabled.length}</strong> 个（${enabled.map(h => SP.$escape(h.name)).join('、')}）</div>
+        <div>排除项：<strong>系统目录、隐藏目录、node_modules、.git</strong></div>
+        <div>扫描模式：<strong>只读</strong> · 递归子目录：${settings.scanSubdirectories ? '是' : '否'} · 跟随符号链接：${settings.followSymlinks ? '是' : '否'}</div>
+        <div>变化确认方式：扫描完成后进入“变化中心”，逐项或批量确认。</div>
+      `;
+    }
+
+    document.getElementById('btn-skip').addEventListener('click', () => {
+      SP.markOnboardingComplete('skip');
+      location.href = 'index.html';
+    });
+    document.getElementById('btn-next-1').addEventListener('click', () => showStep(2));
+    document.getElementById('btn-back-2').addEventListener('click', () => showStep(1));
+    document.getElementById('btn-next-2').addEventListener('click', () => showStep(3));
+    document.getElementById('btn-back-3').addEventListener('click', () => showStep(2));
+    document.getElementById('btn-add-exclude').addEventListener('click', () => SP.toast('添加排除目录（原型）'));
+    document.getElementById('btn-start').addEventListener('click', () => {
+      // Allow Library during first scan; final decision is set on apply / keep / skip.
+      SP.markOnboardingComplete('scan-started');
+      const session = SP.createScanSession('first-full', hosts.filter(h => h.enabled).map(h => h.id));
+      SP.openScan({ scanSessionId: session.id });
+    });
+
+    showStep(1);
+  </script>
+</body>
+</html>

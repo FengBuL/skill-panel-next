@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Install · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .main.sp-f-main { min-width:0; min-height:0; display:grid; grid-template-rows:auto 1fr; overflow:hidden; background:var(--bg); }
+    .sp-f-toolbar { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; }
+    .sp-f-toolbar h1 { font-family:var(--font-display); font-size:20px; font-weight:600; }
+    .sp-f-steps { display:flex; gap:6px; flex-wrap:wrap; font-size:12px; color:var(--meta); }
+    .sp-f-steps span { padding:2px 8px; border-radius:6px; background:var(--surface-warm); }
+    .sp-f-steps span.active { color:var(--fg); font-weight:600; background:color-mix(in oklab, var(--accent) 12%, transparent); }
+    .sp-f-body { overflow:auto; padding:16px 18px 40px; display:grid; gap:14px; max-width:920px; }
+    .sp-f-props { display:grid; gap:8px; }
+    .sp-f-prop { display:grid; grid-template-columns:140px 1fr; gap:8px; font-size:13px; }
+    .sp-f-prop dt { color:var(--muted); }
+    .sp-f-prop dd { font-weight:500; word-break:break-word; }
+    .sp-f-tree { font-family:var(--font-mono); font-size:12px; background:var(--surface-warm); border-radius:10px; padding:12px; max-height:240px; overflow:auto; }
+    .sp-f-warn { border:1px solid var(--border-soft); border-radius:10px; padding:10px 12px; font-size:13px; background:var(--surface-warm); }
+    .sp-f-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title">Skill Panel — Install</div><div class="global-controls" data-global-controls></div></div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">SP</div><div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div></div>
+        <nav class="nav">
+          <div class="nav-label">工作区</div>
+          <a href="index.html"><span>Library</span></a>
+          <a href="insights.html"><span>Insights</span></a>
+          <a href="activity.html"><span>Activity</span></a>
+          <a href="settings.html"><span>Settings</span></a>
+        </nav>
+      </aside>
+      <div class="main sp-f-main">
+        <div class="sp-f-toolbar">
+          <button type="button" class="btn btn-ghost" id="btn-back">← 返回</button>
+          <h1>安装 Skill</h1>
+          <div class="sp-f-steps" id="steps"></div>
+        </div>
+        <div class="sp-f-body" id="body"></div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="shared.js"></script>
+  <script src="install-app.js"></script>
+</body>
+</html>

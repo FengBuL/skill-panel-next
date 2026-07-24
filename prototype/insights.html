@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Insights · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .main { min-width: 0; overflow: auto; padding: 22px 28px 36px; }
+    .page-head { margin-bottom: 18px; }
+    .page-head h1 { font-family: var(--font-display); font-size: 28px; font-weight: 600; letter-spacing: var(--tracking-display); line-height: 1.1; }
+    .page-head p { font-size: 13px; color: var(--muted); margin-top: 6px; max-width: 62ch; line-height: 1.5; }
+    .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 14px 0 16px; }
+    .sum { display: block; width: 100%; background: transparent; border-radius: 0; padding: 10px 0; border: 0; border-bottom: 2px solid transparent; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+    .sum.active { border-bottom-color: var(--fg); background: transparent; }
+    .sum label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: none; color: var(--meta); margin-bottom: 4px; pointer-events: none; }
+    .sum b { font-family: var(--font-mono); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1; }
+    .sum span { display: none; }
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow-x: auto; }
+    .tab { border: 0; background: transparent; padding: 10px 14px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+    .tab:hover { color: var(--fg); } .tab.active { color: var(--fg); font-weight: 600; border-bottom-color: var(--fg); }
+    .tab[aria-current="page"] { color: var(--fg); font-weight: 600; border-bottom-color: var(--fg); }
+    .panel { display: none; } .panel.active { display: block; }
+    .item { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--border-soft); }
+    .item:last-child { border-bottom: 0; } .item h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .item p { font-size: 13px; color: var(--fg-2); line-height: 1.5; max-width: 70ch; }
+    .item .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+    .path { font-family: var(--font-mono); font-size: 11px; color: var(--meta); }
+    .actions { display: flex; flex-direction: column; gap: 6px; min-width: 108px; }
+    .dup-pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; padding: 12px; background: var(--surface); border-radius: 8px; margin-top: 8px; border: 1px solid var(--border-soft); }
+    .dup-side { font-size: 13px; } .dup-side strong { display: block; margin-bottom: 2px; }
+    .dup-vs { align-self: center; font-size: 11px; font-weight: 600; color: var(--meta); letter-spacing: .06em; text-transform: uppercase; }
+    .note { font-size: 12px; color: var(--muted); line-height: 1.45; padding: 10px 12px; background: var(--surface); border-radius: 8px; margin-top: 8px; }
+    @media (max-width: 1100px) { .summary { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title" data-i18n="app.title">Skill Panel — Insights</div><div class="global-controls" data-global-controls></div></div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">SP</div><div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div></div>
+        <nav class="nav">
+          <div class="nav-label" data-i18n="nav.workspace">工作区</div>
+          <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5V6.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg><span data-i18n="nav.library">Library</span></a>
+          <a class="active" href="insights.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16M8 15v4M12 10v9M16 7v12"/></svg><span data-i18n="nav.insights">Insights</span></a>
+          <a href="activity.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg><span data-i18n="nav.activity">Activity</span></a>
+          <a href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg><span data-i18n="nav.settings">Settings</span></a>
+        </nav>
+      </aside>
+      <main class="main">
+        <div class="page-head">
+          <h1 data-i18n="insights.title">Insights</h1>
+          <p data-i18n="insights.lead">待处理任务队列。使用少只代表候选信号，不会自动判定无价值。</p>
+        </div>
+        <div class="summary" id="summary">
+          <button type="button" class="sum" data-tab="archive" aria-pressed="false"><label data-i18n="insights.tab.archive">建议归档</label><b id="sum-archive">0</b><span>默认规则 · 90 天窗口</span></button>
+          <button type="button" class="sum" data-tab="dup" aria-pressed="false"><label data-i18n="insights.tab.dup">重复待确认</label><b id="sum-dup">0</b><span>同名 / 内容哈希</span></button>
+          <button type="button" class="sum" data-tab="file" aria-pressed="false"><label data-i18n="insights.tab.file">文件问题</label><b id="sum-file">0</b><span>路径 / YAML / 权限</span></button>
+          <button type="button" class="sum" data-tab="draft" aria-pressed="false"><label data-i18n="insights.tab.draft">未完成草稿</label><b id="sum-draft">0</b><span>Draft</span></button>
+          <button type="button" class="sum" data-tab="token" aria-pressed="false"><label data-i18n="insights.tab.token">Token 关注项</label><b id="sum-token">0</b><span> Claude Code </span></button>
+        </div>
+        <div class="tabs" id="tabs">
+          <button type="button" class="tab active" data-tab="archive" data-i18n="insights.tab.archive">建议归档</button>
+          <button type="button" class="tab" data-tab="dup" data-i18n="insights.tab.dup">重复待确认</button>
+          <button type="button" class="tab" data-tab="file" data-i18n="insights.tab.file">文件问题</button>
+          <button type="button" class="tab" data-tab="draft" data-i18n="insights.tab.draft">未完成草稿</button>
+          <button type="button" class="tab" data-tab="token" data-i18n="insights.tab.token">Token 关注项</button>
+          <button type="button" class="tab" data-tab="maint" data-i18n="insights.tab.maint">最近维护</button>
+        </div>
+        <section class="panel active" id="panel-archive"></section>
+        <section class="panel" id="panel-dup"></section>
+        <section class="panel" id="panel-file"></section>
+        <section class="panel" id="panel-draft"></section>
+        <section class="panel" id="panel-token"></section>
+        <section class="panel" id="panel-maint"></section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal-bg" id="arch-modal" role="dialog" aria-modal="true" aria-labelledby="arch-title">
+    <div class="modal">
+      <header><h3 id="arch-title">确认归档</h3><p>归档只改变 Asset 管理生命周期，不移动或不删除宿主文件。会创建完整 Package Snapshot；可从 Library → 已归档 恢复管理状态。</p></header>
+      <div class="body" id="arch-body"></div>
+      <footer><button type="button" class="btn" id="arch-cancel" data-i18n="btn.cancel">取消</button><button type="button" class="btn btn-primary" id="arch-confirm">确认归档</button></footer>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    const view = SP.getViewState('insights');
+    let activeTab = view.tab || 'archive';
+    let archTarget = null, draftTarget = null;
+    let archReturnFocus = null;
+
+    function showToast(msg) { SP.toast(msg); }
+
+    function updateSummary() {
+      document.getElementById('sum-archive').textContent = SP.getArchiveCandidates().length;
+      document.getElementById('sum-dup').textContent = SP.getDuplicateGroups().length;
+      document.getElementById('sum-file').textContent = SP.getFileIssues().length;
+      document.getElementById('sum-draft').textContent = SP.getUnfinishedDrafts().length;
+      document.getElementById('sum-token').textContent = SP.getTokenAttentions().length;
+      document.querySelectorAll('.sum').forEach(el => {
+        const on = el.dataset.tab === activeTab;
+        el.classList.toggle('active', on);
+        el.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
+    function setTab(tab) {
+      activeTab = tab;
+      SP.setViewState('insights', { tab });
+      document.querySelectorAll('.tab').forEach(t => {
+        const on = t.dataset.tab === tab;
+        t.classList.toggle('active', on);
+        if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+      });
+      document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+      document.querySelectorAll('.sum').forEach(el => {
+        const on = el.dataset.tab === tab;
+        el.classList.toggle('active', on);
+        el.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      renderPanel(tab);
+      updateSummary();
+    }
+
+    function renderPanel(tab) {
+      const panel = document.getElementById('panel-' + tab);
+      if (tab === 'archive') renderArchive(panel);
+      if (tab === 'dup') renderDup(panel);
+      if (tab === 'file') renderFile(panel);
+      if (tab === 'draft') renderDraft(panel);
+      if (tab === 'token') renderToken(panel);
+      if (tab === 'maint') renderMaint(panel);
+    }
+
+    function renderArchive(panel) {
+      const list = SP.getArchiveCandidates();
+      if (!list.length) { panel.innerHTML = `<div class="empty">${SP.$escape(SP.t('insights.empty.archive'))}</div>`; return; }
+      panel.innerHTML = `<div class="card"><h3>${SP.$escape(SP.t('insights.tab.archive'))}</h3><div class="sub">默认：安装满 30 天 · 近 90 天调用 0 · 未收藏 · 近 30 天未编辑 · 数据覆盖 ≥90 天 · 排除用户创建 · 排除已归档。无可靠数据来源不使用「长期未调用」。</div><div id="archive-list"></div></div>`;
+      const container = document.getElementById('archive-list');
+      container.innerHTML = list.map(({ task, skill }) => {
+        const reason = task.reasonCodes.includes('unused_90d') ? (SP.lang === 'en' ? 'No calls in 90 days, not favorited, not edited in 30 days' : '近 90 天无调用，未收藏，近 30 天未编辑') : (SP.lang === 'en' ? 'Long unused' : '长期未使用');
+        const loc = (SP.getStorageLocation(skill.storageLocationId) || {}).name || '—';
+        return `<div class="item" data-id="${SP.$escape(skill.id)}">
+          <div><h4>${SP.$escape((SP.lang === 'en' ? 'Archive ' : '归档 ') + (skill.displayName || skill.name))}</h4><p>${SP.$escape(reason)}</p><div class="meta"><span class="pill warn">${SP.$escape(SP.lang === 'en' ? 'Archive suggestion' : '归档建议')}</span><span class="pill">${SP.$escape(SP.lang === 'en' ? 'High confidence' : '高置信')}</span><span class="path">${SP.$escape(loc)} · ${SP.$escape(skill.absolutePath || '—')} · ${SP.lang === 'en' ? 'window 90d' : '窗口 90 天'}</span></div></div>
+          <div class="actions"><button type="button" class="btn btn-primary act-arch" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.t('insights.btn.archive'))}</button><button type="button" class="btn" data-action="detail" data-skill-id="${SP.$escape(skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.t('insights.btn.detail'))}</button><button type="button" class="btn act-ignore" data-id="${SP.$escape(skill.id)}" data-task-id="${SP.$escape(task.id)}">${SP.$escape(SP.t('insights.btn.ignore'))}</button></div>
+        </div>`;
+      }).join('');
+      bindActions(container, 'archive');
+    }
+
+    function renderDup(panel) {
+      const groups = SP.getDuplicateGroups();
+      if (!groups.length) { panel.innerHTML = `<div class="empty">${SP.$escape(SP.t('insights.empty.dup'))}</div>`; return; }
+      panel.innerHTML = `<div class="card"><h3>${SP.$escape(SP.lang === 'en' ? 'Suspected duplicates' : '疑似重复')}</h3><div class="sub">${SP.$escape(SP.lang === 'en' ? 'The system never auto-merges. Review diffs before confirming.' : '系统不会自动合并。确认前必须查看差异与影响。')}</div><div id="dup-list"></div></div>`;
+      const container = document.getElementById('dup-list');
+      container.innerHTML = groups.map(g => {
+        const left = g.items.find(i => i.skill.id === g.meta.left) || g.items[0];
+        const right = g.items.find(i => i.skill.id === g.meta.right) || g.items[1];
+        const pair = [left, right].filter(Boolean);
+        return `<div class="item" data-group="${SP.$escape(g.groupId)}">
+          <div>
+            <h4>${SP.$escape(pair.map(p => p.skill.name).join(' ↔ '))}</h4>
+            <div class="dup-pair">${pair.map(p => {
+              const recentUse = p.skill.lastUsedAt ? SP.$timeAgo(p.skill.lastUsedAt) : (SP.lang === 'en' ? 'none' : '无记录');
+              const recentEdit = SP.$timeAgo(p.skill.lastModifiedAt);
+              const loc = SP.getStorageLocation(p.skill.storageLocationId);
+              return `<div class="dup-side"><strong>${SP.$escape(p.skill.displayName || p.skill.name)}</strong><span class="path">${SP.$escape((loc && loc.name) || '—')}${p.skill.isUserCreated ? (SP.lang === 'en' ? ' · user created' : ' · 用户创建') : ''}</span><div class="num" style="margin-top:6px">${SP.lang === 'en' ? 'Doc tokens' : '文档 Token'} ${p.skill.documentTokenCount} · ${SP.lang === 'en' ? '30d' : '近 30 天'} ${p.skill.usage30 ?? '—'}</div><div class="num" style="margin-top:4px;color:var(--muted)">${SP.lang === 'en' ? 'Edited' : '最近编辑'} ${SP.$escape(recentEdit)} · ${SP.lang === 'en' ? 'Used' : '最近使用'} ${SP.$escape(recentUse)}</div></div>`;
+            }).join('<div class="dup-vs">vs</div>')}</div>
+            <div class="meta"><span class="pill">${SP.$escape((SP.lang === 'en' ? 'Name sim ' : '名称相似 ') + g.meta.nameSim + '%')}</span><span class="pill">${SP.$escape((SP.lang === 'en' ? 'Content sim ' : '内容相似 ') + g.meta.similarity + '%')}</span><span class="pill">${SP.$escape(g.meta.reason || '')}</span></div>
+          </div>
+          <div class="actions"><button type="button" class="btn btn-primary" data-action="compare" data-left="${SP.$escape(left.skill.id)}" data-right="${SP.$escape(right.skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.lang === 'en' ? 'Compare' : '查看差异')}</button><button type="button" class="btn act-ignore-group" data-group="${SP.$escape(g.groupId)}">${SP.$escape(SP.lang === 'en' ? 'Ignore group' : '忽略重复组')}</button></div>
+        </div>`;
+      }).join('');
+      container.querySelectorAll('.act-ignore-group').forEach(btn => btn.addEventListener('click', () => {
+        const group = SP.getDuplicateGroups().find(g => g.groupId === btn.dataset.group);
+        if (group) { group.items.forEach(i => SP.resolveTask(i.task.id)); showToast(SP.lang === 'en' ? 'Duplicate group ignored' : '已忽略该重复组'); setTab('dup'); }
+      }));
+    }
+
+    function renderFile(panel) {
+      const list = SP.getFileIssues();
+      if (!list.length) { panel.innerHTML = `<div class="empty">${SP.$escape(SP.t('insights.empty.file'))}</div>`; return; }
+      panel.innerHTML = `<div class="card"><h3>${SP.$escape(SP.t('insights.tab.file'))}</h3><div class="sub">${SP.$escape(SP.lang === 'en' ? 'Actions depend on issue type.' : '根据问题类型提供专属动作。')}</div><div id="file-list"></div></div>`;
+      const container = document.getElementById('file-list');
+      container.innerHTML = list.map(({ task, skill }) => {
+        const ignoreBtn = `<button type="button" class="btn act-ignore" data-id="${SP.$escape(skill.id)}" data-task-id="${SP.$escape(task.id)}">${SP.$escape(SP.t('insights.btn.ignore'))}</button>`;
+        const actions = {
+          path_missing: `<button type="button" class="btn btn-primary act-fix-path" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.lang === 'en' ? 'Fix path' : '修复路径')}</button>${ignoreBtn}`,
+          yaml_error: `<button type="button" class="btn btn-primary" data-action="editor" data-skill-id="${SP.$escape(skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.lang === 'en' ? 'Open Editor' : '打开 Editor')}</button>`,
+          empty_content: `<button type="button" class="btn btn-primary" data-action="editor" data-skill-id="${SP.$escape(skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.lang === 'en' ? 'Continue' : '继续完善')}</button><button type="button" class="btn act-discard" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.lang === 'en' ? 'Discard draft' : '放弃草稿')}</button>`,
+          permission_denied: `<button type="button" class="btn btn-primary act-auth" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.lang === 'en' ? 'Re-authorize' : '重新授权')}</button>${ignoreBtn}`
+        };
+        const reasonMap = { path_missing: SP.lang === 'en' ? 'Path missing' : '路径失效', yaml_error: SP.lang === 'en' ? 'YAML error' : 'YAML 解析错误', empty_content: SP.lang === 'en' ? 'Empty content' : '内容为空', permission_denied: SP.lang === 'en' ? 'No read permission' : '无读取权限' };
+        const reason = reasonMap[task.taskType] || task.taskType;
+        return `<div class="item"><div><h4>${SP.$escape(skill.displayName || skill.name)} · ${SP.$escape(reason)}</h4><p>${SP.$escape(skill.description || '')}</p><div class="meta"><span class="pill danger">${SP.$escape(reason)}</span><span class="path">${SP.$escape(skill.absolutePath || '')}</span></div></div><div class="actions">${actions[task.taskType] || `<button type="button" class="btn" data-action="detail" data-skill-id="${SP.$escape(skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.t('insights.btn.detail'))}</button>`}</div></div>`;
+      }).join('');
+      container.querySelectorAll('.act-fix-path').forEach(btn => btn.addEventListener('click', () => showToast(SP.lang === 'en' ? 'Re-point the directory in Settings' : '请在 Settings 中重新指定目录路径')));
+      container.querySelectorAll('.act-auth').forEach(btn => btn.addEventListener('click', () => showToast(SP.lang === 'en' ? 'Re-authorized (prototype)' : '已重新授权（原型）')));
+      bindActions(container, 'file');
+    }
+
+    function renderDraft(panel) {
+      const list = SP.getUnfinishedDrafts();
+      if (!list.length) { panel.innerHTML = `<div class="empty">${SP.$escape(SP.t('insights.empty.draft'))}</div>`; return; }
+      panel.innerHTML = `<div class="card"><h3>${SP.$escape(SP.t('insights.tab.draft'))}</h3><div class="sub">${SP.$escape(SP.lang === 'en' ? 'Unapplied create/edit drafts or failed saves.' : '新建未应用、编辑未应用或保存失败的草稿。')}</div><div id="draft-list"></div></div>`;
+      const container = document.getElementById('draft-list');
+      container.innerHTML = list.map(({ task, skill, draft }) => {
+        const status = draft ? (draft.status === 'autosave_failed' ? (SP.lang === 'en' ? 'Save failed' : '保存失败') : draft.status === 'conflict' ? (SP.lang === 'en' ? 'External conflict' : '外部冲突') : (SP.lang === 'en' ? 'Unapplied' : '未应用')) : (SP.lang === 'en' ? 'No draft' : '无草稿');
+        return `<div class="item"><div><h4>${SP.$escape(skill.displayName || skill.name)} · ${SP.$escape(status)}</h4><p>${SP.$escape(skill.description || '')}</p><div class="meta"><span class="pill warn">${SP.$escape(status)}</span><span class="path">${SP.$escape(skill.absolutePath || '')}</span></div></div><div class="actions"><button type="button" class="btn btn-primary" data-action="editor" data-skill-id="${SP.$escape(skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.lang === 'en' ? 'Continue editing' : '继续编辑')}</button><button type="button" class="btn act-diff" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.lang === 'en' ? 'View diff' : '查看差异')}</button><button type="button" class="btn act-discard" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.lang === 'en' ? 'Discard draft' : '放弃草稿')}</button><button type="button" class="btn act-copy" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.lang === 'en' ? 'Save as new' : '另存为新 Skill')}</button></div></div>`;
+      }).join('');
+      container.querySelectorAll('.act-diff').forEach(btn => btn.addEventListener('click', () => { const s = SP.getSkill(btn.dataset.id); const d = SP.getDraft(s.id); const diff = SP.$lineDiff(s.content, d ? d.content : s.content); alert((SP.lang === 'en' ? 'Diff:\n' : '差异：\n') + diff.slice(0, 800)); }));
+      container.querySelectorAll('.act-discard').forEach(btn => btn.addEventListener('click', () => { draftTarget = btn.dataset.id; if (confirm(SP.lang === 'en' ? 'Discard draft?' : '确定放弃草稿？')) { SP.discardDraft(draftTarget); showToast(SP.lang === 'en' ? 'Draft discarded' : '已放弃草稿'); setTab('draft'); } }));
+      container.querySelectorAll('.act-copy').forEach(btn => btn.addEventListener('click', () => { const s = SP.getSkill(btn.dataset.id); const d = SP.getDraft(s.id); const copy = SP.createSkill({ name: s.name + '-copy', storageLocationId: s.storageLocationId, content: d ? d.content : s.content, description: s.description }); showToast((SP.lang === 'en' ? 'Saved as ' : '已另存为 ') + copy.name); setTab('draft'); }));
+    }
+
+    function renderToken(panel) {
+      const list = SP.getTokenAttentions();
+      const adapters = SP.getAdapters();
+      const hasReliable = adapters.some(a => a.status === 'connected' && a.supportsTokens);
+      if (!list.length) {
+        if (!hasReliable) {
+          panel.innerHTML = `<div class="empty" data-empty="token"><h3>${SP.$escape(SP.lang === 'en' ? 'No reliable token usage data' : '暂无可用的 Token 使用数据')}</h3><p>${SP.$escape(SP.lang === 'en' ? 'Codex or custom directories lack reliable per-Skill token attribution; fictional zero counts are not shown.' : 'Codex 或自定义目录缺少可靠的逐 Skill Token 关联数据，不会显示虚构的 0 次调用或 0 Token。')}</p></div>`;
+        } else {
+          panel.innerHTML = `<div class="empty" data-empty="token">${SP.$escape(SP.t('insights.empty.token'))}</div>`;
+        }
+        return;
+      }
+      panel.innerHTML = `<div class="card"><h3>${SP.$escape(SP.t('insights.tab.token'))}</h3><div class="sub">${SP.$escape(SP.lang === 'en' ? 'Associated tokens are for trend comparison only.' : '关联 Token 只用于趋势比较，不能直接得出 Skill 需要缩短的结论。')}</div><div id="token-list"></div></div>`;
+      const container = document.getElementById('token-list');
+      container.innerHTML = list.map(({ task, skill, events }) => {
+        const samples = events || [];
+        const hasData = samples.length > 0 && samples.some(e => e.tokenCount != null);
+        if (!hasData) {
+          return `<div class="item"><div><h4>${SP.$escape(skill.displayName || skill.name)}</h4><p>${SP.$escape(SP.lang === 'en' ? 'Current source has no usable associated token samples.' : '当前来源未提供可用的关联 Token 样本，无法计算平均值。')}</p><div class="meta"><span class="pill warn">${SP.$escape(SP.lang === 'en' ? 'Data unavailable' : '数据不可用')}</span></div></div><div class="actions"><button type="button" class="btn" data-action="detail" data-skill-id="${SP.$escape(skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.t('insights.btn.detail'))}</button></div></div>`;
+        }
+        const total = samples.reduce((a, e) => a + (e.tokenCount || 0), 0);
+        const avg = Math.round(total / samples.length);
+        return `<div class="item"><div><h4>${SP.$escape(skill.displayName || skill.name)}</h4><p>${SP.$escape((SP.lang === 'en' ? 'Doc tokens ' : '文档 Token ') + skill.documentTokenCount + (SP.lang === 'en' ? `. Last 7d samples ${samples.length}, avg associated tokens ${avg.toLocaleString()}.` : `。最近 7 天样本 ${samples.length} 条，平均关联 Token ${avg.toLocaleString()}，归因等级：已归因。`))}</p><div class="meta"><span class="pill warn">${SP.$escape(SP.lang === 'en' ? 'Token attention' : 'Token 关注')}</span><span class="path">${SP.$escape((SP.lang === 'en' ? 'Range: 7d · version ' : '数据范围：近 7 天 · 版本 ') + (skill.version || ''))}</span></div></div><div class="actions"><button type="button" class="btn btn-primary act-analyze" data-id="${SP.$escape(skill.id)}">${SP.$escape(SP.lang === 'en' ? 'Analyze' : '查看分析')}</button><button type="button" class="btn" data-action="editor" data-skill-id="${SP.$escape(skill.id)}" data-origin-tab="${SP.$escape(activeTab)}">${SP.$escape(SP.lang === 'en' ? 'Open Editor' : '进入 Editor')}</button></div></div>`;
+      }).join('');
+      container.querySelectorAll('.act-analyze').forEach(btn => btn.addEventListener('click', () => { alert(SP.lang === 'en' ? 'Sample size, attribution, range and version confirmed.' : '样本量、归因等级、数据范围与版本时间已确认。决定进入 Editor 前请先检查上下文变化。'); }));
+    }
+
+    function renderMaint(panel) {
+      const list = SP.getRecentMaintenance(20);
+      if (!list.length) { panel.innerHTML = `<div class="empty">${SP.$escape(SP.t('insights.empty.maint'))}</div>`; return; }
+      panel.innerHTML = `<div class="card"><h3>${SP.$escape(SP.t('insights.tab.maint'))}</h3><div class="sub">${SP.$escape(SP.lang === 'en' ? 'Recent apply, restore, archive and external-change handling.' : '最近应用更改、恢复、归档和外部修改处理。')}</div><div id="maint-list"></div></div>`;
+      const container = document.getElementById('maint-list');
+      container.innerHTML = list.map(e => `<div class="item"><div><h4>${SP.$escape(e.eventType)}</h4><p></p><div class="meta"><span class="pill">${SP.$escape(e.category)}</span><span class="path">${SP.$escape(SP.$timeAgo(e.time))} · ${SP.$escape(e.source || '')}</span></div></div><div class="actions">${e.skillId ? `<button type="button" class="btn" data-action="detail" data-skill-id="${SP.$escape(e.skillId)}" data-origin-tab="">${SP.$escape(SP.t('insights.btn.detail'))}</button>` : `<span class="pill">${SP.$escape(SP.lang === 'en' ? 'System' : '系统')}</span>`}</div></div>`).join('');
+      container.querySelectorAll('.item').forEach((item, idx) => {
+        const p = item.querySelector('p');
+        if (p) p.textContent = list[idx].note || '';
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const skillId = btn.dataset.skillId;
+      const originTab = btn.dataset.originTab || activeTab;
+      if (action === 'detail') SP.openSkillDetail(skillId, { originTab });
+      if (action === 'editor') SP.openSkillEditor(skillId, { originTab });
+      if (action === 'compare') SP.openCompare(btn.dataset.left, btn.dataset.right, { originTab });
+    });
+
+    function bindActions(container, type) {
+      if (type === 'archive') {
+        container.querySelectorAll('.act-arch').forEach(btn => btn.addEventListener('click', () => {
+          archTarget = btn.dataset.id;
+          archReturnFocus = btn;
+          const s = SP.getSkill(archTarget);
+          const body = document.getElementById('arch-body');
+          body.innerHTML = '';
+          const p = document.createElement('p');
+          const strong = document.createElement('strong');
+          strong.textContent = s.displayName || s.name;
+          p.appendChild(strong);
+          body.appendChild(p);
+          const ul = document.createElement('ul');
+          [
+            SP.lang === 'en' ? 'Effect: Asset lifecycle → archived' : '作用：Asset 管理状态 → 已归档',
+            (SP.lang === 'en' ? 'Host path unchanged: ' : '宿主路径不变：') + (s.absolutePath || '—'),
+            SP.lang === 'en' ? 'Does not move or delete instance files' : '不移动、不删除实例文件',
+            SP.lang === 'en' ? 'Creates a full Package Snapshot before archive' : '归档前创建完整 Package Snapshot',
+            SP.lang === 'en' ? 'Restore: management lifecycle only' : '恢复：仅恢复管理生命周期（当前阶段不选择恢复目录）'
+          ].forEach(text => { const li = document.createElement('li'); li.textContent = text; ul.appendChild(li); });
+          body.appendChild(ul);
+          document.getElementById('arch-modal').classList.add('show');
+          document.getElementById('arch-confirm').focus();
+        }));
+        container.querySelectorAll('.act-ignore').forEach(btn => btn.addEventListener('click', () => {
+          const res = SP.ignorePendingSuggestion({
+            taskId: btn.dataset.taskId,
+            skillId: btn.dataset.id,
+            reason: SP.lang === 'en' ? 'Temporarily ignore archive suggestion' : '暂时忽略归档建议'
+          });
+          if (res && res.ok) showToast(SP.t('toast.ignored'));
+          else showToast((res && res.message) || (SP.lang === 'en' ? 'Ignore failed' : '忽略失败'));
+          setTab('archive');
+        }));
+      }
+      if (type === 'file') {
+        container.querySelectorAll('.act-ignore').forEach(btn => btn.addEventListener('click', () => {
+          const res = SP.ignorePendingSuggestion({
+            taskId: btn.dataset.taskId,
+            skillId: btn.dataset.id,
+            reason: SP.lang === 'en' ? 'Temporarily ignore file issue suggestion' : '暂时忽略文件问题建议'
+          });
+          if (res && res.ok) showToast(SP.t('toast.ignored'));
+          else showToast((res && res.message) || (SP.lang === 'en' ? 'Ignore failed' : '忽略失败'));
+          setTab('file');
+        }));
+      }
+    }
+
+    function closeArchModal() {
+      document.getElementById('arch-modal').classList.remove('show');
+      if (archReturnFocus && typeof archReturnFocus.focus === 'function') archReturnFocus.focus();
+      archReturnFocus = null;
+    }
+
+    document.getElementById('arch-cancel').addEventListener('click', () => closeArchModal());
+    document.getElementById('arch-confirm').addEventListener('click', () => {
+      if (archTarget) SP.archiveSkill(archTarget);
+      closeArchModal();
+      showToast(SP.t('toast.archived'));
+      setTab('archive');
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.getElementById('arch-modal').classList.contains('show')) {
+        e.preventDefault();
+        closeArchModal();
+      }
+    });
+
+    document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setTab(tab.dataset.tab)));
+    document.querySelectorAll('.sum').forEach(s => {
+      s.addEventListener('click', () => setTab(s.dataset.tab));
+      s.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setTab(s.dataset.tab);
+        }
+      });
+    });
+
+    if (SP.applyLanguage) SP.applyLanguage(SP.lang || 'zh');
+    updateSummary();
+    setTab(activeTab);
+  </script>
+</body>
+</html>

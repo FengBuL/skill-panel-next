@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Library · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* Library page — layout & components only (shell tokens from shared.css) */
+    .side-foot {
+      margin-top: auto;
+      padding: 12px 10px 4px;
+      border-top: 1px solid var(--border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .side-foot p {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .side-foot button {
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 12px;
+      color: var(--fg-2);
+      cursor: pointer;
+    }
+    .side-foot button:hover { background: var(--surface-warm); color: var(--fg); }
+
+    .lib-side {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 4px;
+      overflow: auto;
+      min-height: 0;
+      flex: 1;
+      padding-bottom: 8px;
+    }
+    .lib-side .nav-label { padding-top: 10px; }
+    .lib-side a.sec {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      color: var(--fg-2);
+      font-weight: 450;
+    }
+    .lib-side a.sec:hover { background: rgba(0,0,0,0.04); color: var(--fg); }
+    html.dark .lib-side a.sec:hover { background: rgba(255,255,255,0.05); }
+    .lib-side a.sec.active {
+      background: rgba(0,0,0,0.06);
+      color: var(--fg);
+      font-weight: 600;
+    }
+    html.dark .lib-side a.sec.active { background: rgba(255,255,255,0.07); }
+    .lib-side a.sec span.count,
+    .lib-side a.sec > span:last-child {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+    #cat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      padding: 2px 0 6px 8px;
+    }
+    #cat-list a {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 7px;
+      text-decoration: none;
+      font-size: 12px;
+      color: var(--fg-2);
+    }
+    #cat-list a:hover { background: rgba(0,0,0,0.04); }
+    #cat-list a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    #cat-list a span {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    #host-filters {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px 10px 8px;
+    }
+    #host-filters label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--fg-2);
+      cursor: pointer;
+    }
+    #host-filters input { accent-color: var(--accent); }
+
+    .lib-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .toolbar {
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+    .toolbar-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .toolbar-top h1 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: var(--tracking-display);
+      line-height: 1.15;
+    }
+    .toolbar-top .meta-line {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .toolbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .status-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 0;
+    }
+    .status-chip {
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-soft);
+      background: var(--surface);
+      font-size: 12px;
+      color: var(--fg-2);
+      cursor: pointer;
+    }
+    .status-chip:hover { border-color: var(--border); color: var(--fg); }
+    .status-chip.accent {
+      background: var(--accent-soft);
+      border-color: var(--accent-soft-border);
+      color: var(--accent);
+    }
+    .status-chip.warn {
+      background: var(--warn-bg);
+      border-color: var(--warn-border);
+      color: var(--warn-text);
+    }
+    .status-chip.danger {
+      background: var(--danger-bg);
+      border-color: var(--danger-border);
+      color: var(--danger-text);
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .search {
+      flex: 1;
+      min-width: 200px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid transparent;
+    }
+    .search:focus-within {
+      border-color: var(--border);
+      background: var(--bg);
+      box-shadow: var(--focus-ring);
+    }
+    .search svg { width: 15px; height: 15px; color: var(--meta); flex-shrink: 0; }
+    .search input {
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 13px;
+      color: var(--fg);
+    }
+    .search input::placeholder { color: var(--meta); }
+
+    .view-seg {
+      display: inline-flex;
+      border: 1px solid var(--border-soft);
+      border-radius: 9px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .view-seg button {
+      height: 30px;
+      padding: 0 11px;
+      border: 0;
+      background: transparent;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .view-seg button + button { border-left: 1px solid var(--border-soft); }
+    .view-seg button:hover { color: var(--fg); background: var(--bg); }
+    .view-seg button.active {
+      background: var(--bg);
+      color: var(--fg);
+      font-weight: 600;
+    }
+
+    .filter-pop, .col-pop, .more-pop { position: relative; }
+    .filter-panel,
+    .col-panel,
+    .more-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      z-index: 25;
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      box-shadow: var(--elev-raised);
+    }
+    .filter-panel {
+      left: 0;
+      width: 300px;
+      max-height: 460px;
+      overflow: auto;
+      padding: 14px;
+    }
+    .col-panel {
+      right: 0;
+      width: 240px;
+      max-height: 360px;
+      overflow: auto;
+      padding: 14px;
+    }
+    .more-menu {
+      right: 0;
+      width: 188px;
+      padding: 6px;
+    }
+    .filter-panel.open,
+    .col-panel.open,
+    .more-menu.open { display: block; }
+    .filter-panel h4,
+    .col-panel h4 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--meta);
+      margin-bottom: 8px;
+    }
+    .filter-panel label,
+    .col-panel label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding: 5px 0;
+      cursor: pointer;
+      color: var(--fg-2);
+    }
+    .filter-panel label + h4 { margin-top: 12px; }
+    .filter-panel input,
+    .col-panel input { accent-color: var(--accent); }
+    .more-menu a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--fg);
+      font-size: 13px;
+    }
+    .more-menu a:hover { background: var(--surface); }
+
+    #active-filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 24px;
+      padding: 0 8px 0 10px;
+      border-radius: 7px;
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      font-size: 12px;
+      color: var(--fg-2);
+    }
+    .filter-chip button {
+      width: 18px;
+      height: 18px;
+      border: 0;
+      background: transparent;
+      color: var(--meta);
+      border-radius: 4px;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .filter-chip button:hover { background: rgba(0,0,0,0.06); color: var(--fg); }
+
+    .body {
+      --detail: 320px;
+      display: grid;
+      grid-template-columns: 1fr var(--detail);
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    #list-pane {
+      min-width: 0;
+      overflow: auto;
+      position: relative;
+    }
+
+    .batch-bar {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 14px;
+      background: color-mix(in oklab, var(--accent) 8%, var(--bg));
+      border-bottom: 1px solid color-mix(in oklab, var(--accent) 18%, var(--border));
+      font-size: 13px;
+    }
+    .batch-bar.show { display: flex; }
+    .batch-bar strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    #scan-changes-panel {
+      padding: 28px 24px;
+    }
+    #scan-changes-panel h2 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: var(--tracking-display);
+      margin-bottom: 6px;
+    }
+    #scan-changes-panel p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    #scan-changes-panel .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 16px 0;
+    }
+    #scan-changes-panel .stat {
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+    }
+    #scan-changes-panel .stat .v {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    #scan-changes-panel .stat .l {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    #table-wrap { min-height: 100%; }
+    table.lib-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.lib-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--meta);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-warm);
+    }
+    table.lib-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-soft);
+      vertical-align: middle;
+    }
+    table.lib-table tbody tr { cursor: pointer; }
+    table.lib-table tbody tr:hover td { background: var(--surface); }
+    table.lib-table tbody tr.selected td {
+      background: color-mix(in oklab, var(--accent) 8%, transparent);
+    }
+    .check-col { width: 36px; }
+    .check-col input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+    .name-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      max-width: 360px;
+    }
+    .name-cell strong {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .name-cell .desc {
+      font-size: 12px;
+      color: var(--fg-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .name-cell .path {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--meta);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .expand-btn {
+      width: 18px;
+      height: 18px;
+      border: 0;
+      background: transparent;
+      color: var(--meta);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .file-hit {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .file-hit code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--fg-2);
+    }
+    .instance-row td {
+      background: var(--surface-warm) !important;
+      font-size: 12px;
+      color: var(--fg-2);
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+    .instance-row .inst-path {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--meta);
+      margin-top: 2px;
+    }
+    .src-tag {
+      display: inline-flex;
+      height: 22px;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--surface);
+      color: var(--fg-2);
+      border: 1px solid var(--border-soft);
+      white-space: nowrap;
+    }
+    .status-label { font-size: 12px; color: var(--fg-2); }
+    .status-label.attn { color: var(--warn-text); font-weight: 600; }
+    .status-label.danger { color: var(--danger-text); font-weight: 600; }
+    .row-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity var(--motion-fast);
+    }
+    tr:hover .row-actions,
+    tr.selected .row-actions { opacity: 1; }
+
+    #cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+    #cards-grid .lib-card {
+      position: relative;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 132px;
+      transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast);
+    }
+    #cards-grid .lib-card:hover { border-color: var(--border); background: var(--surface-warm); }
+    #cards-grid .lib-card.selected {
+      border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+      background: color-mix(in oklab, var(--accent) 6%, var(--bg));
+    }
+    #cards-grid .lib-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      padding-right: 28px;
+      line-height: 1.3;
+    }
+    #cards-grid .lib-card .desc {
+      font-size: 12px;
+      color: var(--fg-2);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    #cards-grid .lib-card .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-top: auto;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    #cards-grid .lib-card .card-check {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+
+    #tree-root { padding: 8px 10px 20px; }
+    #tree-root .tree-node { margin: 1px 0; }
+    #tree-root .tree-children { padding-left: 16px; }
+    #tree-root .tree-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--fg);
+    }
+    #tree-root .tree-row:hover { background: var(--surface); }
+    #tree-root .tree-row.selected {
+      background: color-mix(in oklab, var(--accent) 8%, transparent);
+    }
+    #tree-root .tree-file {
+      padding: 4px 8px 4px 28px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--meta);
+    }
+
+    .empty-block {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+    .empty-block h3 {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 6px;
+    }
+    .empty-block p { font-size: 13px; line-height: 1.5; }
+
+    .detail {
+      border-left: 1px solid var(--border);
+      background: var(--surface-warm);
+      overflow: auto;
+      padding: 18px 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+    }
+    .detail-close {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--meta);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 2;
+    }
+    .detail-close:hover { background: rgba(0,0,0,0.06); color: var(--fg); }
+    .detail-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 18, 22, 0.28);
+      z-index: 15;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+    }
+    .detail-overlay.show { display: block; }
+    .detail-empty {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .d-head h2 {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: var(--tracking-display);
+      margin-bottom: 4px;
+    }
+    .d-head .path {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--meta);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    #d-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    #d-props {
+      display: grid;
+      gap: 8px;
+    }
+    .prop {
+      display: grid;
+      grid-template-columns: 84px 1fr;
+      gap: 8px;
+      font-size: 13px;
+      align-items: start;
+    }
+    .prop dt { color: var(--muted); font-size: 12px; }
+    .prop dd { font-weight: 500; word-break: break-word; }
+    #d-instances { display: grid; gap: 8px; }
+    #d-instances .inst-item {
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border-soft);
+      color: var(--fg-2);
+      line-height: 1.4;
+    }
+    #d-instances .inst-item .p {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--meta);
+      margin-top: 3px;
+      word-break: break-all;
+    }
+    #d-tasks ul { margin: 6px 0 0 16px; font-size: 12px; color: var(--fg-2); }
+    #d-tasks li { margin: 3px 0; }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 12px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .pager-controls { display: flex; align-items: center; gap: 6px; }
+    .pager-controls button {
+      height: 28px;
+      min-width: 28px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .pager-controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pager-controls button:hover:not(:disabled) { background: var(--surface); }
+
+    .confirm-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.36);
+      display: none;
+      place-items: center;
+      z-index: 40;
+      padding: 24px;
+    }
+    .confirm-bg.show { display: grid; }
+    .confirm-bg .modal-inner {
+      width: min(440px, 100%);
+      max-height: 80vh;
+      background: var(--bg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--elev-raised);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    .confirm-bg .modal-inner.wide { width: min(520px, 100%); }
+    .confirm-bg header { padding: 18px 20px 10px; }
+    .confirm-bg header h3 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: var(--tracking-display);
+    }
+    .confirm-bg header p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    .confirm-bg .modal-body {
+      padding: 8px 20px 16px;
+      font-size: 13px;
+      color: var(--fg-2);
+      line-height: 1.55;
+      overflow: auto;
+    }
+    .confirm-bg footer {
+      padding: 12px 20px 18px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      border-top: 1px solid var(--border-soft);
+    }
+    #batch-results-list { display: grid; gap: 6px; }
+    #batch-results-list .ok { color: var(--success-text); }
+    #batch-results-list .fail { color: var(--danger-text); }
+    .install-options { display: grid; gap: 8px; margin-top: 4px; }
+    .install-options a {
+      display: block;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      text-decoration: none;
+      color: var(--fg);
+      background: var(--surface);
+    }
+    .install-options a:hover { border-color: var(--border); background: var(--bg); }
+    .install-options a strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .install-options a span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+    @media (max-width: 1100px) {
+      .body { grid-template-columns: 1fr; }
+      .detail {
+        display: none;
+        flex-direction: column;
+        overflow: auto;
+      }
+      .detail.drawer-open {
+        display: flex;
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: min(340px, 90vw);
+        z-index: 20;
+        background: var(--surface);
+        border-left: 1px solid var(--border);
+        box-shadow: var(--elev-raised);
+        overflow: auto;
+      }
+      .detail.drawer-open .detail-close { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="titlebar">
+      <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="win-title">Skill Panel — Library</div>
+      <div class="global-controls" data-global-controls></div>
+    </div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">SP</div>
+          <div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div>
+        </div>
+
+        <nav class="nav">
+          <div class="nav-label">工作区</div>
+          <a class="active" href="index.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5V6.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg>
+            <span>Library</span><span class="count" id="nav-lib-count">0</span>
+          </a>
+          <a href="insights.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16M8 15v4M12 10v9M16 7v12"/></svg>
+            <span>Insights</span><span class="count" id="nav-ins-count">0</span>
+          </a>
+          <a href="activity.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg>
+            <span>Activity</span><span class="count" id="nav-act-count">0</span>
+          </a>
+          <a href="settings.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg>
+            <span>Settings</span>
+          </a>
+        </nav>
+
+        <div class="lib-side" id="lib-side">
+          <div class="nav-label">浏览</div>
+          <a href="#" class="sec active" id="nav-sec-all" data-section="all">全部 Skill<span class="count" id="cnt-all">0</span></a>
+          <a href="#" class="sec" id="nav-sec-favorites" data-section="favorites">收藏<span class="count" id="cnt-fav">0</span></a>
+          <a href="#" class="sec" id="nav-sec-recent" data-section="recent">最近<span class="count" id="cnt-recent">0</span></a>
+          <a href="#" class="sec" id="nav-sec-updates" data-section="updates">可更新<span class="count" id="cnt-updates">0</span></a>
+          <a href="#" class="sec" id="nav-sec-missing" data-section="missing">Missing<span class="count" id="cnt-missing">0</span></a>
+          <a href="#" class="sec" id="nav-sec-archive" data-section="archive">Archive<span class="count" id="cnt-archive">0</span></a>
+          <a href="#" class="sec" id="nav-sec-scan-changes" data-section="scan-changes">扫描变化<span class="count" id="cnt-scan">0</span></a>
+
+          <div class="nav-label">分类</div>
+          <a href="#" class="sec" id="nav-sec-categories" data-section="categories">全部分类<span class="count" id="cnt-cats">0</span></a>
+          <div id="cat-list" hidden></div>
+
+          <div class="nav-label">宿主筛选</div>
+          <div id="host-filters">
+            <label><input type="checkbox" data-host-filter="claude-code" /> Claude Code</label>
+            <label><input type="checkbox" data-host-filter="codex" /> Codex</label>
+            <label><input type="checkbox" data-host-filter="custom" /> 自定义目录</label>
+          </div>
+        </div>
+
+        <div class="side-foot">
+          <p>最近扫描 · <span id="scan-time">尚未扫描</span><br/>扫描系统允许访问的授权范围 · 数据本地保存</p>
+          <button type="button" id="btn-rescan">重新扫描</button>
+        </div>
+      </aside>
+
+      <div class="lib-main">
+        <div class="toolbar">
+          <div class="toolbar-top">
+            <div>
+              <h1 id="section-title">全部 Skill</h1>
+              <div class="meta-line"><span id="result-count">0</span> 个结果</div>
+            </div>
+            <div class="toolbar-actions">
+              <div class="view-seg" role="group" aria-label="视图切换">
+                <button type="button" id="view-table" data-view="table" class="active" aria-pressed="true">表格</button>
+                <button type="button" id="view-cards" data-view="cards" aria-pressed="false">卡片</button>
+                <button type="button" id="view-tree" data-view="tree" aria-pressed="false">目录树</button>
+              </div>
+              <div class="col-pop">
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-cols">列设置</button>
+                <div class="col-panel" id="col-settings-panel"></div>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary" id="btn-install">安装 Skill</button>
+              <div class="more-pop">
+                <button type="button" class="btn btn-sm" id="btn-more" aria-label="更多">更多</button>
+                <div class="more-menu" id="more-menu">
+                  <a href="new-skill.html">新建（开发）</a>
+                  <a href="add-existing.html">添加已有 Skill</a>
+                  <a href="settings.html">管理扫描目录</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="status-strip" id="status-strip"></div>
+
+          <div class="filters">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="search" type="search" placeholder="搜索名称、路径、标签、描述或文件内容…" autocomplete="off" />
+            </div>
+            <div class="filter-pop">
+              <button type="button" class="btn btn-sm" id="btn-filter">筛选</button>
+              <div class="filter-panel" id="filter-panel">
+                <h4>生命周期</h4>
+                <label><input type="checkbox" data-filter-life="available" /> 可用</label>
+                <label><input type="checkbox" data-filter-life="archived" /> 已归档</label>
+                <label><input type="checkbox" data-filter-life="missing" /> Missing</label>
+
+                <h4>宿主</h4>
+                <label><input type="checkbox" data-filter-host="claude-code" /> Claude Code</label>
+                <label><input type="checkbox" data-filter-host="codex" /> Codex</label>
+                <label><input type="checkbox" data-filter-host="custom" /> 自定义目录</label>
+
+                <h4>更新状态</h4>
+                <label><input type="checkbox" data-filter-update="available" /> 可更新</label>
+                <label><input type="checkbox" data-filter-update="up-to-date" /> 已是最新</label>
+                <label><input type="checkbox" data-filter-update="unknown" /> 未知</label>
+
+                <h4>文件健康</h4>
+                <label><input type="checkbox" data-filter-health="normal" /> 正常</label>
+                <label><input type="checkbox" data-filter-health="yaml-error" /> YAML 错误</label>
+                <label><input type="checkbox" data-filter-health="empty-content" /> 内容为空</label>
+                <label><input type="checkbox" data-filter-health="path-missing" /> 路径失效</label>
+                <label><input type="checkbox" data-filter-health="permission-denied" /> 无权限</label>
+
+                <h4>实例数量</h4>
+                <label><input type="checkbox" data-filter-inst="single" /> 单实例</label>
+                <label><input type="checkbox" data-filter-inst="multi" /> 多实例</label>
+
+                <h4>Missing 范围</h4>
+                <label><input type="checkbox" data-filter-mscope="partial" /> 部分 Missing</label>
+                <label><input type="checkbox" data-filter-mscope="all" /> 全部 Missing</label>
+
+                <h4>其他</h4>
+                <label><input type="checkbox" data-filter-fav="1" /> 已收藏</label>
+
+                <h4>使用数据</h4>
+                <label><input type="radio" name="filter-usage" data-filter-usage="has" /> 有使用数据</label>
+                <label><input type="radio" name="filter-usage" data-filter-usage="no" /> 暂无使用数据</label>
+
+                <div style="display:flex;gap:8px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px">
+                  <button type="button" class="btn btn-sm btn-primary" id="btn-apply-filters">应用筛选</button>
+                  <button type="button" class="btn btn-sm" id="btn-clear-filters">清除全部</button>
+                </div>
+              </div>
+            </div>
+            <select class="select" id="sort">
+              <option value="recent">最近活动</option>
+              <option value="name">名称</option>
+              <option value="edited">最近编辑</option>
+              <option value="lastUsed">最近使用</option>
+              <option value="usage">使用次数</option>
+              <option value="token">Token</option>
+              <option value="instances">实例数</option>
+              <option value="priority">优先级</option>
+              <option value="updated">最近更新</option>
+            </select>
+          </div>
+          <div id="active-filters"></div>
+        </div>
+
+        <div class="body">
+          <div id="detail-overlay" class="detail-overlay" hidden></div>
+          <div id="list-pane">
+            <div class="batch-bar" id="batch-bar">
+              <span>已选 <strong id="selected-count">0</strong></span>
+              <button type="button" class="btn btn-sm" data-batch="favorite">收藏</button>
+              <button type="button" class="btn btn-sm" data-batch="unfavorite">取消收藏</button>
+              <button type="button" class="btn btn-sm" data-batch="add-category">添加分类</button>
+              <button type="button" class="btn btn-sm" data-batch="add-tag">添加标签</button>
+              <button type="button" class="btn btn-sm" data-batch="archive">归档</button>
+              <button type="button" class="btn btn-sm" data-batch="restore">恢复</button>
+              <button type="button" class="btn btn-sm" data-batch="ignore-hint">忽略提示</button>
+              <button type="button" class="btn btn-sm" data-batch="export">导出清单</button>
+            </div>
+
+            <div id="scan-changes-panel" hidden></div>
+
+            <div id="table-wrap">
+              <table class="lib-table">
+                <thead id="thead"></thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+            <div id="cards-grid" hidden></div>
+            <div id="tree-root" hidden></div>
+          </div>
+
+          <aside class="detail" id="detail">
+            <button type="button" class="detail-close" id="d-close" aria-label="关闭详情">×</button>
+            <div class="detail-empty" id="detail-empty">选择左侧 Skill<br/>查看快速详情</div>
+            <div id="detail-body" hidden>
+              <div class="d-head">
+                <h2 id="d-name">—</h2>
+                <div class="path" id="d-path">—</div>
+              </div>
+              <div id="d-actions">
+                <button type="button" class="btn btn-sm btn-primary" id="d-open">打开详情</button>
+              </div>
+              <div class="props" id="d-props"></div>
+              <div id="d-instances"></div>
+              <div id="d-tasks"></div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="pager">
+          <div>显示 <span class="num" id="page-range">0</span></div>
+          <div class="pager-controls">
+            <select class="select" id="page-size" style="height:28px;font-size:12px">
+              <option value="20" selected>20 / 页</option>
+              <option value="30">30 / 页</option>
+              <option value="50">50 / 页</option>
+            </select>
+            <button type="button" id="prev" aria-label="上一页">‹</button>
+            <span id="page-label">1 / 1</span>
+            <button type="button" id="next" aria-label="下一页">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <div class="confirm-bg" id="archive-modal">
+    <div class="modal-inner" role="dialog" aria-labelledby="arch-title">
+      <header>
+        <h3 id="arch-title">确认归档</h3>
+        <p>归档后，Skill 将从普通 Library 中移除，并保留实例、使用记录、草稿和快照。当前原型不会删除本地文件。</p>
+      </header>
+      <div class="modal-body" id="archive-body"></div>
+      <footer>
+        <button type="button" class="btn" id="archive-cancel">取消</button>
+        <button type="button" class="btn btn-primary" id="archive-ok">确认归档</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="confirm-bg" id="restore-modal">
+    <div class="modal-inner" role="dialog" aria-labelledby="restore-title">
+      <header>
+        <h3 id="restore-title">恢复归档</h3>
+        <p>将恢复已归档 Skill 到可调用状态。覆盖前会创建目标快照。</p>
+      </header>
+      <div class="modal-body" id="restore-body"></div>
+      <footer>
+        <button type="button" class="btn" id="restore-cancel">取消</button>
+        <button type="button" class="btn btn-primary" id="restore-ok">确认恢复</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="confirm-bg" id="install-modal">
+    <div class="modal-inner wide" role="dialog" aria-labelledby="install-title">
+      <header>
+        <h3 id="install-title">安装 Skill</h3>
+        <p>从已有包、托管来源或本地目录安装。安装不会覆盖未确认的本地修改。</p>
+      </header>
+      <div class="modal-body">
+        <div class="install-options">
+          <a href="add-existing.html">
+            <strong>添加已有 Skill</strong>
+            <span>选择本地已有的 Skill 目录并纳入管理</span>
+          </a>
+          <a href="settings.html">
+            <strong>添加管理目录</strong>
+            <span>授权新的宿主或自定义扫描路径</span>
+          </a>
+          <a href="#" id="install-placeholder-source">
+            <strong>从来源安装</strong>
+            <span>Git / 远程包安装将在后续阶段提供</span>
+          </a>
+        </div>
+      </div>
+      <footer>
+        <button type="button" class="btn" id="install-close">关闭</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="confirm-bg" id="batch-results-modal">
+    <div class="modal-inner" role="dialog" aria-labelledby="batch-results-title">
+      <header>
+        <h3 id="batch-results-title">批量操作结果</h3>
+        <p id="batch-results-summary"></p>
+      </header>
+      <div class="modal-body" id="batch-results-list"></div>
+      <footer>
+        <button type="button" class="btn btn-primary" id="batch-results-close">完成</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="library-app.js"></script>
+</body>
+</html>

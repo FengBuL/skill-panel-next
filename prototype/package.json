@@ -1,0 +1,16 @@
+{
+  "name": "skill-panel-prototype",
+  "private": true,
+  "scripts": {
+    "test": "node run-all-tests.js",
+    "test:c1": "node phase-c1-targeted-tests.js",
+    "test:c": "node phase-c-targeted-tests.js",
+    "test:d": "node phase-d-targeted-tests.js",
+    "test:d1": "node phase-d1-targeted-tests.js",
+    "test:d2": "node phase-d2-targeted-tests.js",
+    "test:e": "node phase-e-targeted-tests.js"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}

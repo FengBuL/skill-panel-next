@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>案例中心 · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <script src="shared.js"></script>
+  <script id="cases-dev-guard">
+    (function () {
+      try {
+        if (!window.SP || !SP.isDevMode()) {
+          document.documentElement.style.visibility = 'hidden';
+          location.replace('index.html');
+        }
+      } catch (e) {
+        location.replace('index.html');
+      }
+    })();
+  </script>
+  <style>
+    .main { min-width:0; min-height:0; overflow:auto; padding:24px 28px 40px; }
+    .page-head { margin-bottom:18px; }
+    .page-head h1 { font-family:var(--font-display); font-size:28px; font-weight:600; letter-spacing:var(--tracking-display); }
+    .page-head p { font-size:13px; color:var(--muted); margin-top:6px; line-height:1.5; max-width:72ch; }
+    .notice { font-size:13px; color:var(--fg-2); line-height:1.5; padding:12px 14px; background:var(--surface); border:1px solid var(--border-soft); border-radius:10px; margin-bottom:18px; }
+    .toolbar { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+    .cases { display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; }
+    .case { border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:14px 16px; background:var(--bg); }
+    .case h3 { font-size:15px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+    .case .id { font-family:var(--font-mono); font-size:11px; color:var(--meta); font-weight:400; }
+    .case .desc { font-size:13px; color:var(--fg-2); line-height:1.5; margin:8px 0; }
+    .case .meta { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+    .case .actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .case .ops { font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45; }
+    @media (max-width:1100px){ .cases { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title" data-i18n="app.title">Skill Panel — Cases</div><div class="global-controls" data-global-controls></div></div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">SP</div><div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div></div>
+        <nav class="nav">
+          <div class="nav-label">工作区</div>
+          <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5V6.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg><span data-i18n="nav.library">Library</span><span class="count" id="nav-lib-count">0</span></a>
+          <a href="insights.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16M8 15v4M12 10v9M16 7v12"/></svg><span data-i18n="nav.insights">Insights</span><span class="count" id="nav-ins-count">0</span></a>
+          <a href="activity.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg><span data-i18n="nav.activity">Activity</span><span class="count" id="nav-act-count">0</span></a>
+          <a href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg><span data-i18n="nav.settings">Settings</span></a>
+        </nav>
+      </aside>
+      <main class="main">
+        <div class="page-head">
+          <div class="pill warn" id="dev-mode-badge" data-dev-mode-badge="1" style="margin-bottom:8px">开发模式 · Cases 非正式产品入口</div>
+          <h1>案例中心</h1>
+          <p>用于测试不同 Skill 状态下的 Detail、Editor 和管理流程。案例数据为本地演示数据，不代表真实扫描结果。</p>
+        </div>
+        <div class="notice">提示：点击“打开 Detail”或“打开 Editor”会保留当前案例中心作为返回来源。重置案例数据会恢复全部 12 个案例到初始状态。</div>
+        <div class="toolbar">
+          <button type="button" class="btn" id="btn-reset-all">重置全部案例数据</button>
+          <button type="button" class="btn" id="btn-load-scan">加载扫描演示数据</button>
+          <a class="btn" href="index.html?dev=1">打开 Library</a>
+          <button type="button" class="btn" id="btn-lib-file-search">Library 文件搜索演示</button>
+          <button type="button" class="btn btn-primary" id="btn-to-settings">返回 Settings</button>
+        </div>
+        <p class="notice" style="margin-top:8px">Phase C：Library 二级入口为 All / Categories / Favorites / Recent / Updates / Missing / Archive / Scan Changes；三视图共享搜索筛选。文件全文搜索可试关键词 <code>PHASEC_FILE_SEARCH_MARKER</code>（命中 pr-review 包内 checklist.md）。</p>
+        <p class="notice" style="margin-top:8px">Phase D：完整 Skill Detail（Overview / Files / Instances / Source / Permissions / Usage / Activity / Snapshots）。建议验收：<code>pr-review</code>（多实例·文件树·二进制·嵌套 SKILL.md·部分归因）、<code>api-doc</code>（Update Available）、<code>demo-path-missing</code>（Relink）、<code>demo-codex</code>（Usage 暂无数据）、<code>commit-format</code>（部分 Missing）。</p>
+        <p class="notice" style="margin-top:8px">Phase E：多文件 Editor / Diff / Conflict。验收路径：只读 Editor；<code>pr-review</code> 多文件草稿；正常应用；外部冲突（<code>SP.loadEditorDemoCase('external-content')</code>）；合并；强制覆盖；部分失败回滚（<code>apply-partial-fail</code>）。打开 Editor 前请带 <code>?dev=1</code>。</p>
+        <div class="cases" id="cases"></div>
+      </main>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    if (!SP.isDevMode()) {
+      document.body.innerHTML = '<div class="empty" style="padding:48px"><h3>开发模式不可用</h3><p>Cases 仅在开发模式下可用。</p><a class="btn" href="index.html">返回 Library</a></div>';
+      throw new Error('cases_dev_only');
+    }
+
+    const CASES = [
+      { id: 'demo-normal', name: 'demo-normal', title: '正常高频使用', health: ['normal'], pending: [], usage: '有', draft: '无', ops: '编辑、创建快照、归档' },
+      { id: 'demo-codex', name: 'demo-codex', title: 'Codex 无逐 Skill 使用数据', health: ['normal'], pending: [], usage: '无（来源限制）', draft: '无', ops: '编辑、详情、归档；使用数据统一显示“暂无数据”' },
+      { id: 'demo-archive-candidate', name: 'demo-archive-candidate', title: '归档建议候选', health: ['normal'], pending: ['archive_candidate'], usage: '90 天 0 次', draft: '无', ops: '归档、暂时忽略建议、收藏并保留' },
+      { id: 'demo-external-conflict', name: 'demo-external-conflict', title: '外部修改冲突', health: ['external_changed'], pending: ['external_conflict','unfinished_draft'], usage: '—', draft: '冲突草稿', ops: '比较并合并、重新加载磁盘、保留草稿、另存为新 Skill、强制覆盖' },
+      { id: 'demo-yaml-error', name: 'demo-yaml-error', title: 'YAML 解析失败', health: ['yaml_error'], pending: ['yaml_error'], usage: '—', draft: '无', ops: '打开 Editor 并定位错误行；暂停元数据同步' },
+      { id: 'demo-path-missing', name: 'demo-path-missing', title: '路径已不存在', health: ['path_missing'], pending: ['path_missing'], usage: '—', draft: '无', ops: '定位新路径、从其他目录重新关联、忽略扫描提示、移除记录；不提供编辑；不可忽略整个 Skill' },
+      { id: 'demo-permission-denied', name: 'demo-permission-denied', title: '无读取权限', health: ['permission_denied'], pending: ['permission_denied'], usage: '—', draft: '无', ops: '重新授权、打开系统权限说明、停止管理此目录' },
+      { id: 'demo-archived', name: 'demo-archived', title: '已归档 Skill', health: ['normal'], pending: [], usage: '历史有', draft: '无', ops: '恢复管理生命周期（不移动宿主文件）、查看历史 Package Snapshot、永久删除记录；当前阶段不提供选择恢复目录' },
+      { id: 'demo-scan-ignored', name: 'demo-scan-ignored', title: '扫描变化已忽略', health: ['normal'], pending: [], usage: '—', draft: '无', ops: '查看忽略规则（扫描/路径/建议）、恢复规则、打开原目录；不是忽略整个 Skill 生命周期' },
+      { id: 'demo-duplicate-a', name: 'demo-duplicate-a / demo-duplicate-b', title: '疑似重复组', health: ['normal'], pending: ['duplicate_candidate'], usage: 'A 有 / B 无', draft: '无', ops: '查看差异、保留左侧/右侧/双方、归档其中一个、忽略重复建议' },
+      { id: 'demo-draft', name: 'demo-draft', title: '新建未应用草稿', health: ['normal'], pending: ['unfinished_draft'], usage: '—', draft: '未应用', ops: '继续编辑、应用更改、另存为、放弃草稿（需确认）' },
+      { id: 'demo-empty-content', name: 'demo-empty-content', title: '内容为空或仅标题', health: ['empty_content'], pending: ['empty_content'], usage: '—', draft: '无', ops: '打开 Editor 完善、保留草稿、归档、删除' }
+    ];
+
+    function updateSidebar() {
+      const skills = SP.getSkills();
+      document.getElementById('nav-lib-count').textContent = skills.filter(s => s.lifecycleStatus === 'active' && !s.isIgnored).length;
+      document.getElementById('nav-ins-count').textContent = SP.getState().pendingTasks.filter(t => t.status === 'open').length;
+      document.getElementById('nav-act-count').textContent = SP.getActivityEvents().filter(e => e.category === 'pending').length;
+    }
+    updateSidebar();
+
+    function statusClass(status) {
+      return { normal: 'ok', active: 'ok', archived: 'warn', ignored: 'warn', external_changed: 'warn', yaml_error: 'danger', path_missing: 'danger', permission_denied: 'danger', empty_content: 'warn', duplicate_candidate: 'warn', archive_candidate: 'warn', unfinished_draft: 'warn' }[status] || 'ok';
+    }
+
+    function render() {
+      const container = document.getElementById('cases');
+      container.innerHTML = CASES.map(c => {
+        const skill = SP.getSkill(c.id);
+        const instances = skill ? SP.getInstances({ skillId: skill.id }) : [];
+        const source = skill && skill.sourceBindingId ? SP.getSourceBinding(skill.sourceBindingId) : null;
+        const lifecycle = skill ? (skill.lifecycleStatus === 'active' ? 'available' : skill.lifecycleStatus) : 'unknown';
+        const healthPills = c.health.map(h => `<span class="pill ${statusClass(h)}">${SP.getStatusLabel(h) || h}</span>`).join('');
+        const pendingPills = c.pending.map(p => `<span class="pill ${statusClass(p)}">${SP.getStatusLabel(p) || p}</span>`).join('');
+        const lifecyclePill = `<span class="pill ${statusClass(skill ? skill.lifecycleStatus : 'unknown')}">${lifecycle}${skill && skill.isIgnored ? ' · 已忽略' : ''}</span>`;
+        const usagePill = `<span class="pill ${c.usage === '有' || c.usage.includes('历史') ? 'ok' : 'warn'}">使用数据：${c.usage}</span>`;
+        const draftPill = `<span class="pill ${c.draft === '无' ? 'ok' : 'warn'}">草稿：${c.draft}</span>`;
+        const metaExtra = skill ? `
+          <span class="pill">Asset ID: ${SP.$safeSlice(skill.id, 0, 8)}…</span>
+          <span class="pill">Instance: ${instances.length}</span>
+          <span class="pill ${source ? 'ok' : 'warn'}">来源: ${source ? '已绑定' : '未绑定'}</span>
+          <span class="pill">来源类型: ${source ? source.sourceType : '—'}</span>
+          <span class="pill">更新: ${source ? source.updateStatus : '—'}</span>
+          <span class="pill">权限: ${skill.permissionMode}</span>
+        ` : '';
+        const isDup = c.id === 'demo-duplicate-a';
+        return `<div class="case" data-id="${c.id}">
+          <h3>${c.title} <span class="id">${c.name}</span></h3>
+          <div class="desc">${SP.$escape(c.ops)}</div>
+          <div class="meta">${lifecyclePill}${healthPills}${pendingPills}${usagePill}${draftPill}${metaExtra}</div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" data-detail="${c.id}">打开 Detail</button>
+            ${c.id !== 'demo-path-missing' ? `<button type="button" class="btn" data-editor="${c.id}">打开 Editor</button>` : ''}
+            ${isDup ? `<button type="button" class="btn" data-compare="${c.id}">查看差异</button>` : ''}
+            <button type="button" class="btn btn-danger" data-reset="${c.id}">重置此案例</button>
+          </div>
+          <div class="ops">预期操作：${SP.$escape(c.ops)}</div>
+        </div>`;
+      }).join('');
+
+      container.querySelectorAll('[data-detail]').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.detail;
+        if (id === 'demo-duplicate-a') SP.openCompare('demo-duplicate-a', 'demo-duplicate-b', { originPage: 'cases.html', originCaseId: id });
+        else SP.openSkillDetail(id, { originPage: 'cases.html', originCaseId: id });
+      }));
+      container.querySelectorAll('[data-editor]').forEach(b => b.addEventListener('click', () => SP.openSkillEditor(b.dataset.editor, { originPage: 'cases.html', originCaseId: b.dataset.editor })));
+      container.querySelectorAll('[data-compare]').forEach(b => b.addEventListener('click', () => SP.openCompare('demo-duplicate-a', 'demo-duplicate-b', { originPage: 'cases.html', originCaseId: b.dataset.compare })));
+      container.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => resetCase(b.dataset.reset)));
+    }
+
+    function resetCase(id) {
+      // Full state reset is the simplest way to restore demo cases to initial state in this prototype.
+      // For per-case reset, we also do full reset because seedState rebuilds all demos deterministically.
+      SP.resetState();
+      SP.toast('案例数据已重置');
+      setTimeout(() => location.reload(), 400);
+    }
+
+    document.getElementById('btn-reset-all').addEventListener('click', () => {
+      if (confirm('确定重置全部案例数据？所有本地状态将恢复为初始 seed data。')) {
+        SP.resetState();
+        SP.toast('全部案例已重置');
+        setTimeout(() => location.reload(), 400);
+      }
+    });
+    document.getElementById('btn-to-settings').addEventListener('click', () => location.href = 'settings.html?sec=about');
+    document.getElementById('btn-load-scan').addEventListener('click', () => {
+      SP.loadDemoScanScenario();
+      SP.toast('扫描演示数据已加载');
+    });
+    document.getElementById('btn-lib-file-search').addEventListener('click', () => {
+      sessionStorage.setItem('sp-library-url-boot', '1');
+      SP.setLibraryViewState({
+        section: 'all', viewMode: 'table', search: 'PHASEC_FILE_SEARCH_MARKER',
+        filters: {}, page: 1, selectedAssetId: null
+      });
+      location.href = 'index.html?dev=1';
+    });
+
+    render();
+  </script>
+</body>
+</html>

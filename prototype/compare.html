@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Compare · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* Phase F Compare — page-local layout only */
+    .main.sp-compare-main {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .sp-compare-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-soft);
+      flex-wrap: wrap;
+    }
+    .sp-compare-toolbar h1 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: var(--tracking-display);
+      margin: 0;
+    }
+    .sp-compare-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--surface-warm);
+    }
+    .sp-compare-actions .spacer { flex: 1; min-width: 8px; }
+    .sp-compare-scroll {
+      overflow: auto;
+      padding: 16px 18px 40px;
+      min-height: 0;
+    }
+    .sp-compare-evidence {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .sp-compare-pill {
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      color: var(--fg-2);
+      background: color-mix(in oklab, var(--accent) 8%, transparent);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 4px 10px;
+    }
+    .sp-compare-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--compare-cols, 2), minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .sp-compare-card {
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+    .sp-compare-card.is-primary {
+      border-color: color-mix(in oklab, var(--accent) 45%, var(--border-soft));
+      box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 20%, transparent);
+    }
+    .sp-compare-card header { position: relative; }
+    .sp-compare-card h2 {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0 0 4px;
+    }
+    .sp-compare-card .path {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--meta);
+      word-break: break-all;
+    }
+    .sp-compare-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .sp-compare-props {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+    }
+    .sp-compare-props > div {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .sp-compare-props dt { color: var(--muted); font-size: 12px; margin: 0; }
+    .sp-compare-props dd { margin: 0; font-weight: 500; word-break: break-word; }
+    .sp-compare-props dd.mono,
+    .mono { font-family: var(--font-mono); font-size: 12px; font-weight: 400; }
+    .sp-compare-tree-wrap h3,
+    .sp-compare-preview h3,
+    .sp-compare-section h3 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--meta);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin: 0 0 6px;
+    }
+    .sp-compare-tree {
+      list-style: none;
+      margin: 0;
+      padding: 8px 10px;
+      background: var(--surface-warm);
+      border-radius: 10px;
+      max-height: 140px;
+      overflow: auto;
+      font-size: 12px;
+    }
+    .sp-compare-tree li {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 2px 0;
+      font-family: var(--font-mono);
+    }
+    .sp-compare-tree .path { color: var(--fg-2); }
+    .sp-compare-tree .hash { color: var(--meta); flex-shrink: 0; }
+    .sp-compare-tree .more { color: var(--meta); font-family: var(--font-sans, inherit); }
+    .sp-compare-md {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.45;
+      background: var(--surface-warm);
+      border-radius: 10px;
+      padding: 10px 12px;
+      max-height: 160px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .sp-compare-empty {
+      font-size: 13px;
+      color: var(--muted);
+      padding: 12px;
+      background: var(--surface-warm);
+      border-radius: 10px;
+    }
+    .sp-compare-card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-soft);
+    }
+    .sp-compare-section {
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      background: var(--bg);
+    }
+    .sp-compare-diff-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .sp-compare-diff-bar label {
+      font-size: 12px;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sp-compare-diff-bar select {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg);
+      color: var(--fg);
+      max-width: 220px;
+    }
+    .sp-compare-diff {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      background: var(--surface-warm);
+      border-radius: 10px;
+      padding: 12px;
+      overflow: auto;
+      max-height: 380px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .sp-compare-diff .add { color: #1a7f37; }
+    .sp-compare-diff .del { color: #cf222e; }
+    .sp-compare-diff .meta { color: var(--meta); font-style: italic; }
+    html.dark .sp-compare-diff .add { color: #3fb950; }
+    html.dark .sp-compare-diff .del { color: #ff7b72; }
+    .sp-compare-ftable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .sp-compare-ftable th,
+    .sp-compare-ftable td {
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .sp-compare-ftable th { color: var(--meta); font-weight: 600; }
+    @media (max-width: 1100px) {
+      .sp-compare-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <div class="win-title" data-i18n="app.title">Skill Panel — Compare</div>
+      <div class="global-controls" data-global-controls></div>
+    </div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">SP</div><div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div></div>
+        <nav class="nav">
+          <div class="nav-label">工作区</div>
+          <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5V6.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg><span data-i18n="nav.library">Library</span><span class="count" id="nav-lib-count">0</span></a>
+          <a href="insights.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16M8 15v4M12 10v9M16 7v12"/></svg><span data-i18n="nav.insights">Insights</span><span class="count" id="nav-ins-count">0</span></a>
+          <a href="activity.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg><span data-i18n="nav.activity">Activity</span><span class="count" id="nav-act-count">0</span></a>
+          <a href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg><span data-i18n="nav.settings">Settings</span></a>
+        </nav>
+      </aside>
+
+      <div class="main sp-compare-main">
+        <div class="sp-compare-toolbar">
+          <button type="button" class="btn btn-ghost" id="btn-back">← 返回</button>
+          <h1 id="compare-title">比较重复 Skill</h1>
+        </div>
+
+        <div class="sp-compare-actions" id="compare-actions">
+          <button type="button" class="btn btn-primary" id="act-multi">确认为同一 Asset 多实例</button>
+          <button type="button" class="btn" id="act-independent">保持独立 Asset</button>
+          <button type="button" class="btn" id="act-merge-new">人工合并为新 Asset</button>
+          <button type="button" class="btn" id="act-archive-left" title="归档左侧 / 首个候选">归档左侧</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn" id="act-ignore">忽略本次重复建议</button>
+        </div>
+
+        <div class="sp-compare-scroll" id="content">
+          <div class="not-found" id="not-found" hidden>
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 17v.01"/><path d="M12 13.5a1.5 1.5 0 0 1 1-1.5 2.5 2.5 0 1 0-3-4"/></svg></div>
+            <h2>无法比较</h2>
+            <p>比较参数无效，或候选 Skill 已停止管理。</p>
+            <a class="btn btn-primary" href="insights.html">返回 Insights</a>
+          </div>
+
+          <div id="compare-body">
+            <div class="sp-compare-evidence" id="compare-evidence"></div>
+            <!-- id=compare + .col：兼容旧 e2e / phase1 选择器 -->
+            <div class="sp-compare-grid" id="compare-grid" data-compare-root>
+              <div id="compare" class="sp-compare-compat-root" style="display:contents"></div>
+            </div>
+
+            <section class="sp-compare-section">
+              <h3>SKILL.md Diff</h3>
+              <div class="sp-compare-diff-bar">
+                <label>左侧
+                  <select id="diff-base"></select>
+                </label>
+                <label>右侧
+                  <select id="diff-target"></select>
+                </label>
+                <span id="compare-diff-meta" style="font-size:12px;color:var(--meta)"></span>
+              </div>
+              <div class="sp-compare-diff" id="compare-diff"></div>
+            </section>
+
+            <section class="sp-compare-section">
+              <h3>文件结构对照</h3>
+              <div id="compare-file-summary"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="shared.js"></script>
+  <script src="compare-app.js"></script>
+</body>
+</html>

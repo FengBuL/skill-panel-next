@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>扫描中 · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .main { min-width:0; min-height:0; display:grid; grid-template-rows:auto 1fr; overflow:hidden; background:var(--bg); }
+    .toolbar { padding:14px 18px; border-bottom:1px solid var(--border-soft); display:flex; align-items:center; justify-content:space-between; }
+    .toolbar h1 { font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:var(--tracking-display); }
+    .toolbar .status { font-size:13px; color:var(--fg-2); }
+    .content { overflow:auto; padding:22px 28px 40px; }
+    .panel { max-width:720px; margin:0 auto; }
+    .progress-wrap { margin-bottom:18px; }
+    .progress-bar { height:8px; background:var(--surface); border-radius:980px; overflow:hidden; }
+    .progress-bar > div { height:100%; background:var(--accent); width:0%; transition:width .3s; }
+    .progress-meta { display:flex; justify-content:space-between; font-size:12px; color:var(--meta); margin-top:6px; }
+    .metrics { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:22px; }
+    .metric { background:var(--surface-warm); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:14px; }
+    .metric .value { font-family:var(--font-mono); font-size:22px; font-weight:600; }
+    .metric .label { font-size:12px; color:var(--muted); margin-top:4px; }
+    .current { background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:18px; }
+    .current .path { font-family:var(--font-mono); font-size:12px; color:var(--meta); margin-top:4px; word-break:break-all; }
+    .section h2 { font-family:var(--font-display); font-size:16px; font-weight:600; margin-bottom:10px; }
+    .failures { display:flex; flex-direction:column; gap:8px; }
+    .fail-item { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:1px solid var(--border-soft); border-radius:10px; background:var(--surface-warm); }
+    .discoveries { display:flex; flex-direction:column; gap:6px; }
+    .disc-item { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border:1px solid var(--border-soft); border-radius:10px; background:var(--bg); }
+    .disc-item .type { font-size:11px; color:var(--muted); }
+    .actions { display:flex; gap:10px; margin-top:22px; }
+    .empty-state { text-align:center; color:var(--muted); padding:40px; }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title" data-i18n="app.title">Skill Panel — Scan</div><div class="global-controls" data-global-controls></div></div>
+    <div class="main">
+      <div class="toolbar">
+        <h1>全盘扫描</h1>
+        <span class="status" id="status-text">准备中</span>
+      </div>
+      <div class="content">
+        <div class="panel" id="panel">
+          <!-- .empty-state is intentionally renamed to avoid clashing with shared.css .empty -->
+          <div class="empty-state" id="empty-state" hidden>当前没有进行中的扫描</div>
+          <div class="progress-wrap" id="progress-wrap">
+            <div class="progress-bar"><div id="progress"></div></div>
+            <div class="progress-meta"><span id="progress-text">0%</span><span id="elapsed">已用 0 秒</span></div>
+          </div>
+          <div class="metrics" id="metrics">
+            <div class="metric"><div class="value" id="m-visited">0</div><div class="label">已访问目录</div></div>
+            <div class="metric"><div class="value" id="m-found">0</div><div class="label">发现 Skill</div></div>
+            <div class="metric"><div class="value" id="m-failed">0</div><div class="label">失败目录</div></div>
+            <div class="metric"><div class="value" id="m-total">0</div><div class="label">总计步骤</div></div>
+          </div>
+          <div class="current" id="current-wrap" hidden>
+            <div>当前扫描</div>
+            <div class="path" id="current-path">—</div>
+          </div>
+          <div class="section" id="failures-wrap" hidden>
+            <h2>失败目录</h2>
+            <div class="failures" id="failures"></div>
+          </div>
+          <div class="section" id="discoveries-wrap" hidden>
+            <h2>最近发现</h2>
+            <div class="discoveries" id="discoveries"></div>
+          </div>
+          <div class="actions" id="actions"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="confirm-bg" id="discard-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50">
+    <div class="confirm" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);width:min(420px,92vw);padding:22px;box-shadow:var(--elev-raised)">
+      <h3 style="font-size:18px;font-weight:600;margin-bottom:8px">放弃本次扫描结果？</h3>
+      <p style="font-size:13px;color:var(--fg-2);line-height:1.5">临时发现与失败记录将被清除，不会写入正式 Library。</p>
+      <footer style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+        <button type="button" class="btn" id="discard-cancel">取消</button>
+        <button type="button" class="btn btn-danger" id="discard-ok">放弃结果</button>
+      </footer>
+    </div>
+  </div>
+  <script src="shared.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    let sessionId = params.get('session') || null;
+    let timer = null;
+
+    function resolveSession() {
+      if (sessionId) {
+        const byId = SP.getScanSession(sessionId);
+        if (byId) return byId;
+      }
+      const active = SP.getActiveScanSession();
+      if (active) {
+        sessionId = active.id;
+        return active;
+      }
+      const sessions = SP.getScanSessions();
+      const recent = sessions.slice().reverse().find(s =>
+        ['completed-pending-confirmation', 'partial-failure', 'cancelled', 'scanning', 'paused', 'idle'].includes(s.status)
+      );
+      if (recent) sessionId = recent.id;
+      return recent || null;
+    }
+
+    function statusLabel(status) {
+      return { idle: '准备中', scanning: '扫描中', paused: '已暂停', cancelled: '已取消', 'completed-pending-confirmation': '扫描完成，等待确认', 'partial-failure': '部分失败，等待确认' }[status] || status;
+    }
+
+    function render() {
+      const session = resolveSession();
+      const hasSession = !!session;
+      document.getElementById('empty-state').hidden = hasSession;
+      document.getElementById('progress-wrap').hidden = !hasSession;
+      document.getElementById('metrics').hidden = !hasSession;
+      document.getElementById('actions').hidden = !hasSession;
+      if (!session) return;
+      const total = session.steps ? session.steps.length : 0;
+      const pct = total ? Math.round((session.currentStep / total) * 100) : 0;
+      document.getElementById('status-text').textContent = statusLabel(session.status);
+      document.getElementById('progress').style.width = pct + '%';
+      document.getElementById('progress-text').textContent = pct + '%';
+      document.getElementById('m-visited').textContent = session.visitedDirectoryCount;
+      document.getElementById('m-found').textContent = session.discoveredCount;
+      document.getElementById('m-failed').textContent = session.failureCount;
+      document.getElementById('m-total').textContent = total;
+      document.getElementById('elapsed').textContent = '已用 ' + elapsed(session.startedAt) + ' 秒';
+      document.getElementById('current-wrap').hidden = !session.currentPath;
+      document.getElementById('current-path').textContent = session.currentPath || '—';
+
+      const fw = document.getElementById('failures-wrap');
+      const fd = document.getElementById('failures');
+      if (session.failures && session.failures.length) {
+        fw.hidden = false;
+        fd.innerHTML = session.failures.map(f => `<div class="fail-item"><span>${SP.$escape(f.path)}</span><span class="pill warn">${SP.$escape(f.reason)}</span></div>`).join('');
+      } else { fw.hidden = true; }
+
+      const dw = document.getElementById('discoveries-wrap');
+      const dd = document.getElementById('discoveries');
+      const discoveries = SP.getScanDiscoveries(session.id).slice(-8);
+      if (discoveries.length) {
+        dw.hidden = false;
+        dd.innerHTML = discoveries.map(d => `<div class="disc-item"><span>${SP.$escape(d.skillName || d.path)}</span><span class="type">${SP.$escape(d.hostType)}</span></div>`).join('');
+      } else { dw.hidden = true; }
+
+      renderActions(session);
+    }
+
+    function renderActions(s) {
+      const wrap = document.getElementById('actions');
+      wrap.innerHTML = '';
+      if (s.status === 'scanning') {
+        wrap.innerHTML = `<button type="button" class="btn" id="btn-pause">暂停</button><button type="button" class="btn btn-danger" id="btn-cancel">取消扫描</button>`;
+      } else if (s.status === 'paused') {
+        wrap.innerHTML = `<button type="button" class="btn btn-primary" id="btn-resume">继续</button><button type="button" class="btn btn-danger" id="btn-cancel">取消扫描</button>`;
+      } else if (s.status === 'cancelled') {
+        wrap.innerHTML = `<button type="button" class="btn" id="btn-library">返回 Library</button><button type="button" class="btn btn-danger" id="btn-discard">放弃本次结果</button><button type="button" class="btn btn-primary" id="btn-gen">基于当前结果生成变化</button>`;
+      } else if (s.status === 'completed-pending-confirmation' || s.status === 'partial-failure') {
+        wrap.innerHTML = `<button type="button" class="btn" id="btn-library">返回 Library</button><button type="button" class="btn btn-primary" id="btn-changes">查看变化</button>`;
+      }
+      bindActions(s);
+    }
+
+    function bindActions(s) {
+      const btnPause = document.getElementById('btn-pause');
+      const btnResume = document.getElementById('btn-resume');
+      const btnCancel = document.getElementById('btn-cancel');
+      const btnLibrary = document.getElementById('btn-library');
+      const btnChanges = document.getElementById('btn-changes');
+      const btnGen = document.getElementById('btn-gen');
+      const btnDiscard = document.getElementById('btn-discard');
+      if (btnPause) btnPause.addEventListener('click', () => { if (s) SP.pauseScan(s.id); render(); });
+      if (btnResume) btnResume.addEventListener('click', () => { if (s) SP.resumeScan(s.id); startPolling(); render(); });
+      if (btnCancel) btnCancel.addEventListener('click', () => { if (s) SP.cancelScan(s.id); stopPolling(); render(); });
+      if (btnLibrary) btnLibrary.addEventListener('click', () => {
+        if (SP.getPendingChangeSetCount() > 0) SP.markOnboardingComplete('pending-changes');
+        location.href = 'index.html';
+      });
+      if (btnChanges) btnChanges.addEventListener('click', () => {
+        const cs = SP.getChangeSets(s.id)[0];
+        if (cs) SP.openScanChanges(cs.id);
+      });
+      if (btnGen) btnGen.addEventListener('click', () => {
+        const cs = SP.createChangeSet(s.id, { source: 'cancelled-partial-scan' });
+        if (cs) SP.openScanChanges(cs.id);
+      });
+      if (btnDiscard) btnDiscard.addEventListener('click', () => {
+        const modal = document.getElementById('discard-modal');
+        modal.style.display = 'flex';
+        modal.dataset.sessionId = s.id;
+      });
+    }
+
+    document.getElementById('discard-cancel').addEventListener('click', () => {
+      document.getElementById('discard-modal').style.display = 'none';
+    });
+    document.getElementById('discard-ok').addEventListener('click', () => {
+      const modal = document.getElementById('discard-modal');
+      const sid = modal.dataset.sessionId;
+      modal.style.display = 'none';
+      const s = SP.getScanSession(sid);
+      if (!s) return;
+      if (SP.discardScanSession) {
+        SP.discardScanSession(s.id);
+      } else {
+        const decision = SP.getOnboardingDecision ? SP.getOnboardingDecision() : SP.getState();
+        if (!decision.onboardingDecision || decision.onboardingDecision === 'scan-started' || decision.onboardingDecision === 'scan-in-progress') {
+          SP.markOnboardingComplete('skip');
+        }
+      }
+      location.href = 'index.html';
+    });
+
+    function elapsed(start) {
+      if (!start) return 0;
+      return Math.floor((Date.now() - new Date(start).getTime()) / 1000);
+    }
+
+    function startPolling() { if (!timer) timer = setInterval(render, 300); }
+    function stopPolling() { if (timer) { clearInterval(timer); timer = null; } }
+
+    // Auto-start idle session
+    (function init() {
+      const s = resolveSession();
+      if (s && s.status === 'idle') { SP.startScan(); startPolling(); }
+      render();
+      startPolling();
+    })();
+  </script>
+</body>
+</html>

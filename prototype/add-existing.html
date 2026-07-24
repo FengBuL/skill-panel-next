@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Add Existing Skill · Skill Panel</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .main { min-width:0; overflow:auto; padding:24px 28px 40px; }
+    .page-head { margin-bottom:18px; }
+    .page-head h1 { font-family:var(--font-display); font-size:28px; font-weight:600; letter-spacing:var(--tracking-display); }
+    .page-head p { font-size:13px; color:var(--muted); margin-top:6px; }
+    .wizard { display:flex; gap:8px; margin-bottom:20px; }
+    .step { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+    .step b { width:22px; height:22px; border-radius:50%; background:var(--surface); display:grid; place-items:center; font-size:11px; }
+    .step.active { color:var(--fg); font-weight:600; } .step.active b { background:var(--accent); color:var(--accent-on); }
+  </style>
+</head>
+<body>
+  <div class="app" data-od-id="app-shell">
+    <div class="titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="win-title" data-i18n="app.title">Skill Panel — Add Existing</div><div class="global-controls" data-global-controls></div></div>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brand-mark">SP</div><div><strong>Skill Panel</strong><span>本地 · v0.1.0-mvp</span></div></div>
+        <nav class="nav">
+          <div class="nav-label">工作区</div>
+          <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5V6.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg><span data-i18n="nav.library">Library</span><span class="count" id="nav-lib-count">0</span></a>
+          <a href="insights.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16M8 15v4M12 10v9M16 7v12"/></svg><span data-i18n="nav.insights">Insights</span><span class="count" id="nav-ins-count">0</span></a>
+          <a href="activity.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg><span data-i18n="nav.activity">Activity</span><span class="count" id="nav-act-count">0</span></a>
+          <a href="settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg><span data-i18n="nav.settings">Settings</span></a>
+        </nav>
+      </aside>
+      <main class="main">
+        <div class="page-head">
+          <h1>添加已有 Skill</h1>
+          <p>选择本地 Skill 目录或 SKILL.md 文件，验证结构后纳入管理。</p>
+        </div>
+        <div class="wizard">
+          <div class="step active" id="step-1"><b>1</b>选择路径</div>
+          <div class="step" id="step-2"><b>2</b>验证与检查</div>
+          <div class="step" id="step-3"><b>3</b>确认</div>
+        </div>
+
+        <div class="card" id="step1-card">
+          <h3>选择目录或 SKILL.md</h3>
+          <div class="sub">支持目录路径或 SKILL.md 文件路径。导入过程不要求填写模板、版本、作者或保存目录。</div>
+          <div class="field" id="f-path"><label>路径 *</label><input id="path-input" placeholder="例如 ~/Projects/skills/my-skill 或 ~/Projects/skills/my-skill/SKILL.md" /><div class="hint">原型中可输入任意路径模拟导入</div><div class="error">路径不能为空</div></div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn" id="btn-browse">选择目录…</button>
+            <button type="button" class="btn btn-primary" id="btn-validate">验证结构</button>
+          </div>
+        </div>
+
+        <div class="card hidden" id="step2-card">
+          <h3>验证结果</h3>
+          <div class="sub" id="check-summary"></div>
+          <div id="check-body"></div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button type="button" class="btn" id="btn-back2">上一步</button>
+            <button type="button" class="btn btn-primary" id="btn-review">查看并确认</button>
+          </div>
+        </div>
+
+        <div class="card hidden" id="step3-card">
+          <h3>确认纳入管理</h3>
+          <div class="sub">确认后，Skill 将加入 active Library。如检测到问题，可选择进入 Editor 修复。</div>
+          <div id="confirm-body"></div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button type="button" class="btn" id="btn-back3">上一步</button>
+            <button type="button" class="btn" id="btn-to-lib">确认并返回 Library</button>
+            <button type="button" class="btn btn-primary" id="btn-to-editor">确认并进入 Editor</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="shared.js"></script>
+  <script>
+    function updateSidebar() {
+      const skills = SP.getSkills();
+      document.getElementById('nav-lib-count').textContent = skills.filter(s => s.lifecycleStatus === 'active' && !s.isIgnored).length;
+      document.getElementById('nav-ins-count').textContent = SP.getState().pendingTasks.filter(t => t.status === 'open').length;
+      document.getElementById('nav-act-count').textContent = SP.getState().auditEvents.filter(e => e.category === 'pending').length;
+    }
+    updateSidebar();
+
+    let parsedPath = '', parsedName = '', parsedContent = '', parsedHealth = ['normal'];
+
+    function step(n) {
+      [1, 2, 3].forEach(i => {
+        document.getElementById('step-' + i).classList.toggle('active', i === n);
+        document.getElementById('step' + i + '-card').classList.toggle('hidden', i !== n);
+      });
+    }
+
+    function guessName(path) {
+      const parts = path.replace(/\/SKILL\.md$/, '').split('/').filter(Boolean);
+      return parts[parts.length - 1] || 'imported-skill';
+    }
+
+    function validate() {
+      const path = document.getElementById('path-input').value.trim();
+      const field = document.getElementById('f-path');
+      if (!path) { field.classList.add('invalid'); return; }
+      field.classList.remove('invalid');
+      parsedPath = path.endsWith('/SKILL.md') ? path : (path.replace(/\/$/, '') + '/SKILL.md');
+      parsedName = guessName(parsedPath);
+      const existing = SP.getSkills().find(s => s.absolutePath === parsedPath && s.lifecycleStatus !== 'deleted');
+      if (existing) {
+        document.getElementById('check-summary').innerHTML = `<span class="pill warn">已管理</span> 该路径已存在于 Library 中。`;
+        document.getElementById('check-body').innerHTML = `<p><strong>${SP.$escape(existing.displayName || existing.name)}</strong></p><p class="mono">${SP.$escape(existing.absolutePath)}</p><p>你可以选择查看详情或取消。</p>`;
+        document.getElementById('btn-review').textContent = '查看详情';
+        document.getElementById('btn-review').onclick = () => SP.openSkillDetail(existing.id, { originPage: 'add-existing.html' });
+        step(2); return;
+      }
+      // Simulate validation deterministically based on path
+      const pathHash = Array.from(parsedPath).reduce((a, c) => a + c.charCodeAt(0), 0);
+      const hasYaml = pathHash % 10 !== 0; // 10% chance of yaml error, deterministic for same path
+      const hasContent = pathHash % 20 !== 1; // 5% chance of empty content
+      parsedHealth = [];
+      if (!hasYaml) parsedHealth.push('yaml_error');
+      if (!hasContent) parsedHealth.push('empty_content');
+      if (parsedHealth.length === 0) parsedHealth.push('normal');
+      parsedContent = `# ${parsedName}\n\n从本地路径导入的 Skill。\n\n## 步骤\n1. 待完善\n`;
+      const healthPills = parsedHealth.map(h => `<span class="pill ${h === 'normal' ? 'ok' : 'danger'}">${SP.getStatusLabel(h)}</span>`).join('');
+      document.getElementById('check-summary').innerHTML = `<span class="pill ok">结构验证通过</span> 检测到 ${parsedHealth.length} 个健康问题。`;
+      document.getElementById('check-body').innerHTML = `<p><strong>名称</strong>：${SP.$escape(parsedName)}</p><p class="mono">${SP.$escape(parsedPath)}</p><div style="margin-top:8px">健康状态：${healthPills}</div>`;
+      document.getElementById('btn-review').textContent = '查看并确认';
+      document.getElementById('btn-review').onclick = () => step(3);
+      step(2);
+    }
+
+    document.getElementById('btn-validate').addEventListener('click', validate);
+    document.getElementById('btn-browse').addEventListener('click', () => SP.toast('选择目录对话框（原型）'));
+    document.getElementById('btn-back2').addEventListener('click', () => step(1));
+    document.getElementById('btn-review').addEventListener('click', () => step(3));
+    document.getElementById('btn-back3').addEventListener('click', () => step(2));
+
+    document.getElementById('btn-to-lib').addEventListener('click', () => doAdd('lib'));
+    document.getElementById('btn-to-editor').addEventListener('click', () => doAdd('editor'));
+
+    function doAdd(dest) {
+      const loc = SP.getStorageLocation('custom');
+      const skill = SP.addExistingSkill({ name: parsedName, path: parsedPath, storageLocationId: loc.id, content: parsedContent, health: parsedHealth });
+      SP.toast('已纳入管理');
+      if (dest === 'editor') SP.openSkillEditor(skill.id, { originPage: 'add-existing.html' });
+      else SP.returnToOrigin('index.html');
+    }
+  </script>
+</body>
+</html>
