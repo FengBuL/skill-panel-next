@@ -1,23 +1,28 @@
-# Skill Panel Next — PRD 5.0 正式基线工作区
+# Skill Panel Next
 
-**用途：** 后续 Git 建库、生产架构、后端、数据库、打包与发布的唯一基线目录。  
-**状态：** 原型视觉 / 流程 / 状态模型 / 交互 = **正式基线（已冻结）**  
-**整理：** 2026-07-25（已去重；迁移前分散副本已删除）
+**远端：** `https://github.com/FengBuL/skill-panel-next`
+
+**产品依据：** PRD 5.0
+
+**原型状态：** 视觉、流程、状态模型与交互已冻结
+
+**生产状态：** `SPN-FOUNDATION-001` 基础工程建设中
 
 ---
 
 ## 目录结构
 
-```text
-skill panel next/
-├── README.md
-├── SOURCE-MAP.md
-├── docs/
-│   ├── prd/              # PRD5.0、边际探讨
-│   ├── refactor-plan/    # 实施方案、IA、状态机、验收与回归规格
-│   └── baseline/         # 冻结报告、交接、开发台账、测试指南
-└── prototype/            # 可运行冻结原型 + 20-suite 测试
-```
+四个权威 worktree：
+
+| 路径                                                                   | 分支         | 角色       |
+| ---------------------------------------------------------------------- | ------------ | ---------- |
+| `/Users/shovy/Documents/cursor/skill-panel-next-workspaces/main`       | `main`       | 稳定里程碑 |
+| `/Users/shovy/Documents/cursor/skill-panel-next-workspaces/develop`    | `develop`    | 日常集成   |
+| `/Users/shovy/Documents/cursor/skill-panel-next-workspaces/cursor-ui`  | `cursor/ui`  | Cursor UI  |
+| `/Users/shovy/Documents/cursor/skill-panel-next-workspaces/codex-core` | `codex/core` | Codex 核心 |
+
+旧路径 `/Users/shovy/Documents/cursor/skill panel next` 已迁移并停用。禁止继续从旧路径启动
+开发。Git 内容权威来源为远端仓库和 `main`。
 
 ---
 
@@ -31,13 +36,15 @@ skill panel next/
 6. `docs/refactor-plan/02-信息架构与页面规格.md`
 7. `prototype/`（实现与回归）
 
+生产开发先阅读 `AGENTS.md` 和 `docs/tasks/` 中的当前任务卡。
+
 ---
 
 ## 原型启动
 
 ```bash
 cd prototype
-npm install
+npm ci
 python3 -m http.server 8081
 # http://localhost:8081/index.html
 
@@ -46,8 +53,10 @@ node run-all-tests.js   # 期望 20 suites · exit 0
 
 ---
 
-## 后续约定
+## 分支约定
 
-- **本目录为唯一权威工作区**（旧 Workbuddy / Desktop 分散副本已删除）。
-- 冻结规则仍有效：未授权勿改视觉/流程/状态机契约；修复须回归 20-suite。
-- 新能力走新版本或分支；Git 建库需人工明确授权后再做。
+- `main` 只接收来自 `develop` 的里程碑 PR。
+- `develop` 接收 `codex/core` 与 `cursor/ui` PR。
+- 长期角色分支使用普通 merge commit。
+- 禁止自动合并、force push、直接 push `main` 和删除远端角色分支。
+- 冻结规则持续有效；原型变更需要授权和 20-suite 回归。
