@@ -109,6 +109,8 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run frozen prototype suite
+        env:
+          NODE_OPTIONS: --require=${{ github.workspace }}/scripts/prototype-playwright-locale.cjs
         run: |
           python3 -m http.server 8081 \
             --bind 127.0.0.1 \
