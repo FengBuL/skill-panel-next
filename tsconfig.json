@@ -21,6 +21,8 @@
     "src",
     "tests/contracts",
     "tests/integration",
+    "tests/e2e",
+    "playwright.config.ts",
     "vite.config.ts",
     "vitest.config.ts"
   ]
